@@ -1743,15 +1743,17 @@ function setupRendition() {
   const r = reader.rendition = reader.epub.renderTo(inner, {
     width: '100%', height: '100%', flow: 'paginated', spread: reader.layout === 'spread' ? 'always' : 'none', allowScriptedContent: false,
   });
-  for (const [name, color] of Object.entries(PAPERS)) {
-    r.themes.register(name, {
-      body: { color: `${color} !important`, background: 'transparent !important', 'font-family': 'Georgia, "Iowan Old Style", "Palatino Linotype", serif', 'line-height': '1.65' },
-      'p, li, span, div, h1, h2, h3, h4': { color: `${color} !important` },
-      a: { color: name === 'night' ? '#e3b866 !important' : '#8e3424 !important' },
-      img: { 'max-width': '100%' },
-    });
-  }
-  r.themes.select(reader.paper);
+  // One theme whose colours come from CSS variables. (Registering a theme per page colour doesn't work:
+  // epub.js keeps every theme's style sheet in the book, so the last one added wins after switching.)
+  r.themes.register('shelfie', {
+    body: { color: 'var(--rd-ink) !important', background: 'transparent !important',
+      'font-family': 'Georgia, "Iowan Old Style", "Palatino Linotype", serif', 'line-height': '1.65' },
+    'p, li, span, div, h1, h2, h3, h4, h5, h6, blockquote, td, th': { color: 'var(--rd-ink) !important' },
+    a: { color: 'var(--rd-link) !important' },
+    img: { 'max-width': '100%' },
+  });
+  r.themes.select('shelfie');
+  applyEpubPaper();
   r.themes.fontSize(`${reader.font}%`);
   r.on('relocated', (loc) => {
     reader.pos = loc.start.cfi;
@@ -1763,6 +1765,14 @@ function setupRendition() {
   r.on('mousemove', () => armIdle());
   r.on('touchstart', (e) => { touchX = e.changedTouches ? e.changedTouches[0].clientX : null; });
   r.on('touchend', (e) => endSwipe(e));
+}
+
+/** Set the EPUB text colours for the chosen page colour (paper / sepia / night). */
+function applyEpubPaper() {
+  const r = reader.rendition;
+  if (!r) return;
+  r.themes.override('--rd-ink', PAPERS[reader.paper] || PAPERS.paper);
+  r.themes.override('--rd-link', reader.paper === 'night' ? '#e3b866' : '#8e3424');
 }
 
 async function openEpub(b) {
@@ -2079,7 +2089,7 @@ $$('#rd-layout button').forEach((b) => b.onclick = () => {
 $$('#rd-paper button').forEach((b) => b.onclick = () => {
   reader.paper = b.dataset.p;
   $('#reader').dataset.paper = reader.paper;
-  if (reader.rendition) reader.rendition.themes.select(reader.paper);
+  applyEpubPaper();
   try { localStorage.setItem('rdPaper', reader.paper); } catch { /* ignore */ }
   syncReaderTools();
 });
