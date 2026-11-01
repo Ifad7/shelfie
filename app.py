@@ -985,20 +985,43 @@ def _free_port(host, start):
     return start
 
 
+def _port_free(host, port):
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.bind((host, port))
+            return True
+        except OSError:
+            return False
+
+
+def _address(port):
+    """A friendly address: http://shelfie.localhost (Edge and Chrome send *.localhost to this computer).
+
+    Elsewhere (e.g. Safari on a Mac) that name may not resolve, so plain localhost is used there.
+    """
+    name = os.environ.get("SHELFIE_HOSTNAME") or ("shelfie.localhost" if sys.platform == "win32" else "localhost")
+    return f"http://{name}/" if port == 80 else f"http://{name}:{port}/"
+
+
 def main():
     host = os.environ.get("HOST", "127.0.0.1")
-    port = int(os.environ.get("PORT", "5173"))
-    if _already_running(host, port):
-        url = f"http://{host}:{port}/"
-        print(f"\n  Shelfie is already running. Opening {url}\n")
-        if not os.environ.get("NO_BROWSER"):
-            webbrowser.open(url)
-        sys.exit(3)  # tells the launcher "already open" rather than "stopped"
+    # Port 80 hides the ":5173" from the address. If something else uses it, 5173 (or the next free port) is used.
+    ports = [int(os.environ["PORT"])] if os.environ.get("PORT") else [80, 5173]
+    for p in ports:
+        if _already_running(host, p):
+            url = _address(p)
+            print(f"\n  Shelfie is already running. Opening {url}\n")
+            if not os.environ.get("NO_BROWSER"):
+                webbrowser.open(url)
+            sys.exit(3)  # tells the launcher "already open" rather than "stopped"
     db.init()
     feeds.init()
-    port = _free_port(host, port)
-    url = f"http://{host}:{port}/"
-    print(f"\n  Shelfie is running at {url}\n  Your library is saved in: {db.DATA_DIR}\n"
+    port = next((p for p in ports if _port_free(host, p)), None) or _free_port(host, ports[-1])
+    url = _address(port)
+    print(f"\n  Shelfie is running at {url}\n"
+          f"  (If that address doesn't open in your browser, use http://localhost{'' if port == 80 else f':{port}'}/ instead.)\n"
+          f"  Your library is saved in: {db.DATA_DIR}\n"
           f"  To stop: click \"Close Shelfie\" in the app, or close this window.\n")
     if not os.environ.get("NO_BROWSER"):
         threading.Timer(1.2, lambda: webbrowser.open(url)).start()

@@ -103,7 +103,7 @@ a few seconds. When it's ready, **Shelfie opens in your web browser** by itself.
 - **To stop:** click **Close Shelfie** at the bottom of the left sidebar. Your library is saved, and the black
   window closes by itself. Closing the black window also stops Shelfie.
 - **Opened it twice by accident?** No problem. Shelfie notices it's already open and shows it in your browser.
-- **Closed the browser tab by accident?** Go to **http://127.0.0.1:5173** in your browser, or double-click the
+- **Closed the browser tab by accident?** Go to **http://shelfie.localhost** in your browser, or double-click the
   launcher again.
 
 ### The quick start button (Windows)
@@ -472,7 +472,8 @@ Check your internet connection, then double-click the launcher again. If it keep
 hidden; it's safe to delete because Shelfie rebuilds it.
 
 **The browser didn't open**
-Open your browser and go to **http://127.0.0.1:5173**. If that doesn't work, look at the black window: it shows
+Open your browser and go to **http://shelfie.localhost** (or **http://localhost**). If that doesn't work, look at
+the black window: it shows
 the exact address on the line *"Shelfie is running at …"*.
 
 **"Browse…" doesn't open a folder window**

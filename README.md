@@ -275,13 +275,17 @@ Shelfie there and put your `data` folder in its place.
 ```bash
 python -m venv .venv
 .venv/Scripts/pip install -r requirements.txt   # macOS/Linux: .venv/bin/pip
-.venv/Scripts/python app.py                      # http://127.0.0.1:5173
+.venv/Scripts/python app.py                      # opens http://shelfie.localhost
 ```
 
 The launchers additionally detect or install Python, repair a broken `.venv`, reinstall packages only when
 `requirements.txt` changes, and recognise an already-running instance (`app.py` exits with code 3).
 
-**Environment variables:** `GEMINI_API_KEY`, `PORT` (default 5173; the next free port is used if taken), `HOST`,
+**Address:** Shelfie serves on port 80 when it's free, so the address is simply **http://shelfie.localhost** (Edge and Chrome
+send `*.localhost` to your own computer; `http://localhost` works too). If port 80 is taken it uses 5173 or the next
+free port. On macOS/Linux the address is `http://localhost` (port 80 usually needs admin rights there, so 5173 is used).
+
+**Environment variables:** `GEMINI_API_KEY`, `PORT` (fixes the port), `SHELFIE_HOSTNAME` (the name in the address), `HOST`,
 `LIBRARY_DATA_DIR` (default `./data`), `NO_BROWSER=1`.
 
 **Stack:** Python 3.10+, Flask, Pillow, SQLite (built in), vanilla JS/CSS with no build step. Gemini is called over its
