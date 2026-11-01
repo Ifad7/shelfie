@@ -110,7 +110,7 @@ in seconds. **Close Shelfie** in the app stops it when you're done.
 
 <table>
 <tr>
-<td width="50%"><img src="docs/images/01-library.jpg" alt="My Library"><br><sub><b>My Library</b>: books on named shelves, with the bookcase on the right</sub></td>
+<td width="50%"><img src="docs/images/01-library.jpg" alt="My Library"><br><sub><b>My Library</b>: your books, with your named shelves in the bookcase on the right</sub></td>
 <td width="50%"><img src="docs/images/06-full-bookcase.jpg" alt="Full-screen bookcase"><br><sub><b>Full-screen bookcase</b>: every shelf at a glance</sub></td>
 </tr>
 <tr>
