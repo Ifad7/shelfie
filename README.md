@@ -91,9 +91,10 @@ set everything up for you. No technical knowledge needed.
 <tr>
 <td valign="top">
 
-### 📖 PDFs and a beautiful reader
-Tag each book as **Hardcopy**, **PDF**, or both. Upload a book's PDF and read it in a built-in reader with white,
-sepia and night pages, an open-book two-page spread, zoom, chapters, and it remembers your page.
+### 📖 eBooks and a beautiful reader
+Tag each book as **Hardcopy**, **eBook**, or both. Attach its **EPUB, PDF, MOBI, AZW3, FB2, DJVU, CBZ, TXT…** file.
+EPUB, PDF and TXT open in a built-in reader with white, sepia and night pages, an open-book spread, chapters and
+font size, and it remembers your place. Wrong file? Replace or remove it in one click.
 
 </td>
 <td valign="top">
@@ -122,8 +123,8 @@ in seconds. **Close Shelfie** in the app stops it when you're done.
 <td><img src="docs/images/07-book-feed.jpg" alt="Book Feed"><br><sub><b>Book Feed</b>: Western, Indian, Bangladeshi and Asian book news</sub></td>
 </tr>
 <tr>
-<td><img src="docs/images/11-pdf-reader.jpg" alt="PDF reader"><br><sub><b>PDF reader</b>: an open book, with sepia and night pages too</sub></td>
-<td><img src="docs/images/12-book-pdf.jpg" alt="Book with PDF"><br><sub><b>Hardcopy or PDF</b>: upload a PDF, read, and track your progress</sub></td>
+<td><img src="docs/images/11-reader.jpg" alt="Book reader"><br><sub><b>Reader</b>: an EPUB open like a book, with sepia and night pages too</sub></td>
+<td><img src="docs/images/12-book-ebook.jpg" alt="Book with eBook file"><br><sub><b>Hardcopy or eBook</b>: attach EPUB, PDF, MOBI…, read, and track your progress</sub></td>
 </tr>
 <tr>
 <td><img src="docs/images/04-review.jpg" alt="Review"><br><sub><b>Review</b>: fix anything Gemini wasn't sure about</sub></td>
@@ -262,7 +263,7 @@ many books) also work. A second photo of the back cover helps Shelfie read the I
 <details>
 <summary><b>How do I back up or move my library?</b></summary>
 
-Copy the `data` folder (it holds your library, settings and uploaded PDFs). To move to another computer, install
+Copy the `data` folder (it holds your library, settings and attached eBook files). To move to another computer, install
 Shelfie there and put your `data` folder in its place.
 </details>
 
@@ -284,9 +285,10 @@ The launchers additionally detect or install Python, repair a broken `.venv`, re
 `LIBRARY_DATA_DIR` (default `./data`), `NO_BROWSER=1`.
 
 **Stack:** Python 3.10+, Flask, Pillow, SQLite (built in), vanilla JS/CSS with no build step. Gemini is called over its
-REST API with an enforced response schema. The PDF reader uses [PDF.js](https://mozilla.github.io/pdf.js/) (loaded from
-cdnjs, with the browser's own viewer as an offline fallback); PDFs are served with HTTP range requests so large
-files open quickly. Optional `pillow-heif` adds HEIC photo support.
+REST API with an enforced response schema. The reader uses [PDF.js](https://mozilla.github.io/pdf.js/) for PDFs (with
+the browser's own viewer as an offline fallback) and [epub.js](https://github.com/futurepress/epub.js) for EPUBs,
+loaded from CDNs on first use; files are served with HTTP range requests so large PDFs open quickly. Uploaded eBooks
+are identified by their content (`library/ebooks.py`), not just their file extension. Optional `pillow-heif` adds HEIC photo support.
 
 **Project layout**
 
@@ -299,6 +301,7 @@ library/catalog.py       Cleaning AI output, ISBN validation, de-duplication, li
 library/scanner.py       Folder scanning and hashing (incremental re-scans)
 library/imaging.py       Downscaling for upload, thumbnails, optional HEIC support
 library/feeds.py         Book Feed: RSS/Atom fetching and parsing, built-in sources
+library/ebooks.py        Supported eBook formats and content-based format detection
 tools/make-shortcut.ps1  Creates the Desktop / Start-menu "Shelfie" button (Windows)
 static/                  Single-page UI (index.html, app.js, styles.css)
 Shelfie-Windows.bat      One-click launcher (Windows)

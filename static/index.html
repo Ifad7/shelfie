@@ -117,7 +117,8 @@
         <select id="lib-inshelf" title="Show one shelf"><option value="">All shelves</option></select>
         <select id="lib-format" title="Which format you own">
           <option value="">Any format</option><option value="hardcopy">📕 Hardcopy</option>
-          <option value="pdf">📄 PDF</option><option value="readable">📖 PDF uploaded (readable here)</option>
+          <option value="ebook">📱 eBook (any kind)</option><option value="readable">📖 Readable in Shelfie</option>
+          <option value="pdf">PDF file</option><option value="epub">EPUB file</option><option value="kindle">Kindle file (MOBI / AZW)</option>
         </select>
         <label class="check"><input type="checkbox" id="lib-fav"> ★ Favourites</label>
         <select id="lib-sort">
@@ -375,20 +376,20 @@
   <div class="fc-room" id="fc-room"></div>
 </div>
 
-<!-- ============ PDF reader ============ -->
-<div id="reader" class="reader" hidden data-paper="paper" role="dialog" aria-label="PDF reader">
+<!-- ============ book reader (PDF, EPUB, TXT) ============ -->
+<div id="reader" class="reader" hidden data-paper="paper" role="dialog" aria-label="Book reader">
   <div class="rd-top">
     <button class="rd-btn" id="rd-close" title="Close the reader (Esc)"><svg class="i"><use href="#i-prev"/></svg><span>Library</span></button>
     <div class="rd-title"><b id="rd-book-title"></b><span id="rd-book-author"></span></div>
     <div class="rd-tools">
-      <button class="rd-btn icon" id="rd-toc-btn" title="Contents"><svg class="i"><use href="#i-toc"/></svg></button>
+      <button class="rd-btn icon no-txt" id="rd-toc-btn" title="Contents"><svg class="i"><use href="#i-toc"/></svg></button>
       <span class="rd-sep"></span>
       <button class="rd-btn icon" id="rd-zoom-out" title="Smaller (−)"><svg class="i"><use href="#i-minus"/></svg></button>
-      <span class="rd-zoom" id="rd-zoom">100%</span>
+      <span class="rd-zoom" id="rd-zoom" title="Size">100%</span>
       <button class="rd-btn icon" id="rd-zoom-in" title="Bigger (+)"><svg class="i"><use href="#i-plus"/></svg></button>
-      <button class="rd-btn icon" id="rd-fit" title="Fit page / fit width"><svg class="i"><use href="#i-fitw"/></svg></button>
+      <button class="rd-btn icon pdf-only" id="rd-fit" title="Fit page / fit width"><svg class="i"><use href="#i-fitw"/></svg></button>
       <span class="rd-sep"></span>
-      <div class="rd-seg" id="rd-layout">
+      <div class="rd-seg no-txt" id="rd-layout">
         <button data-l="single" title="One page"><svg class="i"><use href="#i-page"/></svg></button>
         <button data-l="spread" title="Two pages, like an open book"><svg class="i"><use href="#i-spread"/></svg></button>
       </div>
@@ -398,7 +399,7 @@
         <button data-p="night" title="Night"><i></i></button>
       </div>
       <span class="rd-sep"></span>
-      <a class="rd-btn icon" id="rd-download" title="Download the PDF"><svg class="i"><use href="#i-down"/></svg></a>
+      <a class="rd-btn icon" id="rd-download" title="Download the file"><svg class="i"><use href="#i-down"/></svg></a>
       <button class="rd-btn icon" id="rd-full" title="Full screen"><svg class="i"><use href="#i-expand"/></svg></button>
     </div>
   </div>
@@ -412,7 +413,8 @@
     </div>
   </div>
   <div class="rd-bottom">
-    <span class="rd-pageinfo">Page <input type="number" id="rd-page" min="1" value="1"> of <span id="rd-pages-total">–</span></span>
+    <span class="rd-pageinfo pdf-only">Page <input type="number" id="rd-page" min="1" value="1"> of <span id="rd-pages-total">–</span></span>
+    <span class="rd-pageinfo flow-only" id="rd-where">Through the book</span>
     <input type="range" id="rd-slider" min="1" max="1" value="1" aria-label="Jump to page">
     <span class="rd-pct" id="rd-pct">0%</span>
   </div>

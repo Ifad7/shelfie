@@ -23,7 +23,7 @@ This guide assumes no technical knowledge. If you can download a file and double
 8. [Your library](#8-your-library)
 9. [Bookshelves: name them and arrange your books](#9-bookshelves-name-them-and-arrange-your-books)
 10. [The full-screen bookcase](#10-the-full-screen-bookcase)
-11. [PDFs and the reader](#11-pdfs-and-the-reader)
+11. [eBooks and the reader](#11-ebooks-and-the-reader)
 12. [Book Feed: news from the world of books](#12-book-feed-news-from-the-world-of-books)
 13. [Settings explained](#13-settings-explained)
 14. [Daily limits and what the messages mean](#14-daily-limits-and-what-the-messages-mean)
@@ -233,8 +233,8 @@ Click **My Library** in the sidebar.
 
 ### Ways to view your books
 Use the two buttons next to the filters:
-- **Covers:** a grid of book covers. Under each book, small tags show what you own: **Hardcopy** and/or **PDF**.
-  Books with an uploaded PDF show a gold **Read** button when you point at them, and a thin bar showing how far
+- **Covers:** a grid of book covers. Under each book, small tags show what you own: **Hardcopy** and/or the eBook's
+  format (**EPUB**, **PDF**, **MOBI**…). Books you can read in Shelfie show a gold **Read** button when you point at them, and a thin bar showing how far
   you've read.
 - **List:** a table with each book's shelf and formats, handy for large libraries.
 
@@ -243,7 +243,7 @@ Your **shelves** live in the wooden bookcase on the right, and in the **full-scr
 
 ### Finding books
 - **Search** by title, author, ISBN, series, publisher or your own tags.
-- **Filter** by genre, author, language, reading status, **shelf**, **format** (Hardcopy, PDF, or "PDF uploaded"),
+- **Filter** by genre, author, language, reading status, **shelf**, **format** (Hardcopy, any eBook, readable in Shelfie, PDF, EPUB or Kindle),
   or **★ Favourites**.
 - **Sort** by title, author, year, recently added, rating, or your own **shelf order**.
 
@@ -253,8 +253,8 @@ Click any book to open it. You can:
 - set **Reading status** (Unread, Reading, Read, Abandoned, Wishlist), give a **star rating** and mark it as
   a **Favourite**,
 - choose which **Shelf** it sits on, note a **Room / location**, add **personal tags** and **notes**,
-- tick what you own under **I own this book as**: **📕 Hardcopy**, **📄 PDF / eBook**, or both,
-- **upload the book's PDF** and read it right there ([section 11](#11-pdfs-and-the-reader)),
+- tick what you own under **I own this book as**: **📕 Hardcopy**, **📱 eBook**, or both,
+- **attach the book's eBook file** (PDF, EPUB, MOBI…) and read it right there ([section 11](#11-ebooks-and-the-reader)),
 - see all its photos, and pick which one is the cover (**Use as cover**),
 - click **Check Open Library** to look the book up in a free online catalogue and fill in empty fields
   (it never overwrites what's already there),
@@ -264,7 +264,7 @@ Click any book to open it. You can:
 
 ### Other handy things
 - **Add a book** (top of My Library): type in a book by hand, for example one without a photo. You can attach
-  its PDF at the same time.
+  its eBook file at the same time.
 - **Merge into one book:** if the same book appears twice, tick both and click this in the bar that appears.
   Shelfie also offers to merge when you save a book that looks like a duplicate.
 - **Move back to New Finds:** takes books off your shelves without deleting them.
@@ -321,23 +321,43 @@ Inside you can:
 
 ---
 
-## 11. PDFs and the reader
+## 11. eBooks and the reader
 
-Keep a PDF of a book with its entry in your library, and read it in Shelfie's built-in reader.
+Keep the digital copy of a book (PDF, EPUB, Kindle file and more) with its entry in your library, and read it in
+Shelfie's built-in reader.
 
-### Hardcopy or PDF: what do you own?
-Every book can be tagged **📕 Hardcopy**, **📄 PDF / eBook**, or both. Open the book and tick the boxes under
+### Hardcopy or eBook: what do you own?
+Every book can be tagged **📕 Hardcopy**, **📱 eBook**, or both. Open the book and tick the boxes under
 **I own this book as**, then **Save**. Books found from your photos are tagged Hardcopy automatically. Use the
-**format** filter in My Library to see, for example, only the books you own as PDFs.
+**format** filter in My Library to see, for example, only your EPUBs or only the books you own as eBooks.
 
-### Upload a PDF
+### Which files can I attach?
+
+| Format | Read inside Shelfie? |
+|---|---|
+| **EPUB**: the most common eBook format | ✅ Yes, with pages that reflow to fit your screen and adjustable text size |
+| **PDF** | ✅ Yes, exactly as printed |
+| **TXT**: plain text | ✅ Yes, as a clean scrolling page |
+| **MOBI, AZW, AZW3** (Kindle), **FB2**, **DJVU**, **CBZ / CBR** (comics), **RTF**, **DOCX**, **ODT** | Stored with the book. Click **Download to read** to open it in Kindle, Calibre, Apple Books, or another app. |
+
+Shelfie checks what a file *really* is, not just its name. A PDF that was accidentally named `.epub` is still
+recognised as a PDF, and a file that isn't an eBook at all is refused with a message.
+
+### Attach a file
 1. Open the book (click it in My Library or on a shelf).
-2. In the gold **PDF** box under the cover, click **Upload this book's PDF**, or drag a PDF file onto it.
-3. A progress bar shows the upload. When it's done, the book is tagged **PDF** and a **Read now** button appears.
+2. In the gold **eBook** box under the cover, click **Upload this book's eBook**, or drag the file onto it.
+3. A progress bar shows the upload. When it's done, the box shows the format (for example **EPUB**) and a
+   **Read now** button (or **Download to read** for formats Shelfie can't display).
 
-You can **Replace**, **Download** or **Remove** the PDF from the same box. PDFs up to 600 MB are fine.
+Files up to 600 MB are fine.
 
-![A book with its PDF](docs/images/12-book-pdf.jpg)
+### Wrong file attached?
+It happens. Open the book, and in the eBook box under **Wrong file attached?**:
+- **⇄ Upload a different file** replaces it with the right one in one step. The wrong file is deleted.
+- **Remove file** takes it off the book completely. The book stays in your library, and you can upload the right
+  file whenever you like.
+
+![A book with its eBook file](docs/images/12-book-ebook.jpg)
 
 ### Reading
 Click **Read now** in the book's details, or the gold **Read** button on its cover in My Library.
@@ -345,18 +365,18 @@ Click **Read now** in the book's details, or the gold **Read** button on its cov
 | To… | Do this |
 |---|---|
 | Turn the page | Click the **‹ ›** arrows at the sides, press **← →** (or Space), scroll the mouse wheel, or swipe on a touch screen |
-| Jump to a page | Type the number in the **Page** box at the bottom, or drag the slider |
-| See it like an open book | Click the **two-page** button at the top |
+| Jump somewhere | Drag the slider at the bottom (in a PDF you can also type a page number) |
+| See it like an open book | Click the **two-page** button at the top (PDF and EPUB) |
 | Change the page colour | Pick **white paper**, **sepia** or **night** (the three dots at the top) |
-| Make it bigger or smaller | **＋ / −**, or the **↔** button to fit the page width |
-| Go to a chapter | Click the **☰ Contents** button (if the PDF has a table of contents) |
+| Make it bigger or smaller | **＋ / −** (in EPUB and text this changes the font size; in a PDF it zooms) |
+| Go to a chapter | Click the **☰ Contents** button (PDF and EPUB, if the book has a table of contents) |
 | Read without distractions | Just read: the toolbars fade away. Move the mouse to bring them back. **⤢** goes full screen. |
 | Close the reader | Click **‹ Library** at the top left, or press **Esc** |
 
-**Shelfie remembers where you stopped.** Next time you open the book it carries on from the same page, and the
+**Shelfie remembers where you stopped.** Next time you open the book it carries on from the same place, and the
 book's details show how far you've read.
 
-![The PDF reader](docs/images/11-pdf-reader.jpg)
+![The reader with an EPUB open like a book](docs/images/11-reader.jpg)
 
 ---
 
@@ -422,8 +442,8 @@ on the time of year. The limit banner always shows the exact reset time for you.
 
 ## 15. Your data: where it lives, backups, moving computers
 
-- Everything Shelfie knows (your books, shelves, settings, API key and uploaded PDFs) is in the **`data` folder**
-  inside the Shelfie folder. PDFs are in `data/pdfs`. Your photos stay where they were.
+- Everything Shelfie knows (your books, shelves, settings, API key and attached eBook files) is in the **`data`
+  folder** inside the Shelfie folder. eBook files are in `data/ebooks`. Your photos stay where they were.
 - **Back up:** copy the `data` folder somewhere safe (a USB stick, cloud drive, etc.).
 - **Move to a new computer:** install Shelfie there ([step 2](#2-install-shelfie-first-time-only)), then copy
   your old `data` folder into the new Shelfie folder, replacing the empty one. If your photos are in a different
@@ -481,15 +501,21 @@ Open it, correct the details and click **Save & mark verified**. Or, in Review, 
 News websites occasionally have problems. The rest of the feed keeps working. Click **Refresh** later, or
 switch that source off under **Sources**.
 
-**The PDF reader looks plain, or says it's using the browser's viewer**
-Shelfie's reader downloads its page-drawing engine from the internet the first time. Without internet, your
-browser's built-in PDF viewer is used instead. Your book still opens.
+**The reader says it's using the browser's viewer, or an EPUB won't open**
+Shelfie's reader downloads its page-drawing engines from the internet the first time. Without internet, PDFs open
+in your browser's own viewer instead. EPUBs need the internet that first time. You can always click **Download it
+instead**.
 
-**"That file is too big" / "That file isn't a PDF"**
-PDFs up to 600 MB can be uploaded. Make sure the file really is a PDF (it ends in `.pdf`).
+**"That doesn't look like an eBook file" / "That file is too big"**
+Shelfie accepts PDF, EPUB, MOBI, AZW/AZW3, FB2, DJVU, CBZ/CBR, TXT, RTF, DOCX and ODT files up to 600 MB. If
+you chose the wrong file by mistake, just pick the right one.
 
-**"The old PDF is still open somewhere"**
-Close the reader (and any other program showing that PDF), then try replacing it again.
+**I attached the wrong eBook**
+Open the book and use **⇄ Upload a different file** or **Remove file** in the eBook box. See
+[Wrong file attached?](#wrong-file-attached).
+
+**"The old file is still open somewhere"**
+Close the reader (and any other program showing that file), then try replacing it again.
 
 **Everything looks old or broken after an update**
 Press **Ctrl + F5** (Windows) or **Cmd + Shift + R** (Mac) in the browser to reload Shelfie fully.

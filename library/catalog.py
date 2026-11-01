@@ -372,9 +372,9 @@ def merge_books(conn, target_id, source_ids):
         merged["favorite"] = merged["favorite"] or src["favorite"]
         merged["has_hardcopy"] = max(merged["has_hardcopy"], src["has_hardcopy"])
         merged["has_pdf"] = max(merged["has_pdf"], src["has_pdf"])
-        if not merged.get("pdf_name") and src["pdf_name"] and db.pdf_path(sid).exists():
-            db.move_pdf_file(sid, target_id)  # keep the source's PDF on the merged book
-            for f in ("pdf_name", "pdf_size", "pdf_pages", "pdf_page"):
+        if not merged.get("ebook_name") and src["ebook_name"] and db.ebook_path(sid, src["ebook_ext"]).exists():
+            db.move_ebook_file(sid, target_id, src["ebook_ext"])  # keep the source's eBook on the merged book
+            for f in ("ebook_name", "ebook_ext", "ebook_size", "ebook_pages", "ebook_page", "ebook_pos", "ebook_pct"):
                 merged[f] = src[f]
         merged["in_library"] = max(merged["in_library"], src["in_library"])
         conn.execute("INSERT OR IGNORE INTO book_images(book_id, image_id) "

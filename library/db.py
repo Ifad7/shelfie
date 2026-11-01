@@ -11,29 +11,33 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.environ.get("LIBRARY_DATA_DIR", ROOT / "data"))
 DB_PATH = DATA_DIR / "library.db"
 THUMB_DIR = DATA_DIR / "thumbs"
-PDF_DIR = DATA_DIR / "pdfs"
+PDF_DIR = DATA_DIR / "pdfs"        # used by older versions; migrated into EBOOK_DIR
+EBOOK_DIR = DATA_DIR / "ebooks"    # one file per book: <book id>.<pdf|epub|mobi|...>
 
 
-def pdf_path(book_id):
-    return PDF_DIR / f"{int(book_id)}.pdf"
+def ebook_path(book_id, ext):
+    return EBOOK_DIR / f"{int(book_id)}.{ext}"
 
 
-def remove_pdf_file(book_id):
-    """Delete a book's PDF; on Windows a file that's open (e.g. being read) can't be deleted, so don't fail on that."""
-    try:
-        pdf_path(book_id).unlink(missing_ok=True)
-    except OSError:
-        pass
+def remove_ebook_files(book_id):
+    """Delete a book's eBook file(s). On Windows an open file can't be deleted, so don't fail on that."""
+    for p in EBOOK_DIR.glob(f"{int(book_id)}.*"):
+        if p.suffix == ".uploading":
+            continue
+        try:
+            p.unlink()
+        except OSError:
+            pass
 
 
-def move_pdf_file(src_id, dst_id):
-    """Give book dst the PDF of book src (copying if Windows has the file locked)."""
+def move_ebook_file(src_id, dst_id, ext):
+    """Give book dst the eBook file of book src (copying if Windows has the file locked)."""
     import shutil
     try:
-        pdf_path(src_id).replace(pdf_path(dst_id))
+        ebook_path(src_id, ext).replace(ebook_path(dst_id, ext))
     except OSError:
-        shutil.copyfile(pdf_path(src_id), pdf_path(dst_id))
-        remove_pdf_file(src_id)
+        shutil.copyfile(ebook_path(src_id, ext), ebook_path(dst_id, ext))
+        remove_ebook_files(src_id)
 
 BOOK_JSON_FIELDS = ("authors", "categories", "topics", "keywords", "uncertain_fields", "tags")
 
@@ -211,7 +215,7 @@ def tx():
 
 def init():
     THUMB_DIR.mkdir(parents=True, exist_ok=True)
-    PDF_DIR.mkdir(parents=True, exist_ok=True)
+    EBOOK_DIR.mkdir(parents=True, exist_ok=True)
     conn = connect()
     conn.executescript(SCHEMA)
     cols = {r["name"] for r in conn.execute("PRAGMA table_info(books)")}
@@ -233,6 +237,25 @@ def init():
             if col == "has_hardcopy":  # books found from photos are physical copies
                 conn.execute("UPDATE books SET has_hardcopy=1 WHERE EXISTS "
                              "(SELECT 1 FROM book_images bi WHERE bi.book_id=books.id)")
+    # Any eBook format (PDF, EPUB, MOBI…): file name and format, size, and reading position.
+    # (has_pdf above means "I own a digital copy", whatever its format.)
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(books)")}
+    for col, ddl in (("ebook_name", "TEXT"), ("ebook_ext", "TEXT"), ("ebook_size", "INTEGER"), ("ebook_pages", "INTEGER"),
+                     ("ebook_page", "INTEGER"), ("ebook_pos", "TEXT"), ("ebook_pct", "REAL")):
+        if col not in cols:
+            conn.execute(f"ALTER TABLE books ADD COLUMN {col} {ddl}")
+    # PDFs uploaded with the previous version: move them over.
+    for r in conn.execute("SELECT id, pdf_name, pdf_size, pdf_pages, pdf_page FROM books "
+                          "WHERE pdf_name IS NOT NULL AND ebook_name IS NULL").fetchall():
+        old = PDF_DIR / f"{r['id']}.pdf"
+        if old.exists():
+            try:
+                old.replace(ebook_path(r["id"], "pdf"))
+            except OSError:
+                continue
+            conn.execute("UPDATE books SET ebook_name=?, ebook_ext='pdf', ebook_size=?, ebook_pages=?, ebook_page=? "
+                         "WHERE id=?", (r["pdf_name"], r["pdf_size"], r["pdf_pages"], r["pdf_page"], r["id"]))
+        conn.execute("UPDATE books SET pdf_name=NULL WHERE id=?", (r["id"],))
     conn.execute("CREATE INDEX IF NOT EXISTS idx_books_in_library ON books(in_library)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_books_shelf ON books(shelf_id, shelf_pos)")
     # Anything left "processing" by a crash or shutdown goes back in the queue.
@@ -301,8 +324,14 @@ def book_from_row(row):
             b[f] = []
     b["favorite"] = bool(b.get("favorite"))
     b["has_hardcopy"] = bool(b.get("has_hardcopy"))
-    b["has_pdf"] = bool(b.get("has_pdf"))
-    b["pdf_available"] = bool(b.get("pdf_name"))
+    b["has_pdf"] = bool(b.get("has_pdf"))  # owns a digital copy (any format)
+    from .ebooks import READABLE, label
+    ext = b.get("ebook_ext")
+    b["ebook_available"] = bool(b.get("ebook_name"))
+    b["ebook_label"] = label(ext) if ext else None
+    b["ebook_readable"] = bool(b.get("ebook_name")) and ext in READABLE
+    for f in ("pdf_name", "pdf_size", "pdf_pages", "pdf_page"):
+        b.pop(f, None)
     b.pop("title_norm", None)
     b.pop("author_norm", None)
     return b

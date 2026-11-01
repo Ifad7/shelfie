@@ -335,7 +335,7 @@ async function loadBookcase(freshIds = []) {
     const h = hashStr(b.title);
     const w = b.page_count ? Math.max(16, Math.min(32, 12 + b.page_count / 30)) : 16 + (h % 13);
     return `<div class="slot" data-id="${b.id}"><div class="spine ${fresh.has(b.id) ? 'fresh' : ''}" title="${esc(b.title)} — ${esc(authorsText(b.authors))}${formatNote(b)}"
-      style="--c:${bookColor(b)};width:${w}px;height:${84 + (h % 32)}px">${b.readable ? '<em class="pdfdot"></em>' : ''}<span>${esc(b.title)}</span></div></div>`;
+      style="--c:${bookColor(b)};width:${w}px;height:${84 + (h % 32)}px">${fileDot(b)}<span>${esc(b.title)}</span></div></div>`;
   };
   const group = (id, name, list) => `<div class="case-group">
       <div class="case-label"><span class="plate ${id ? '' : 'unsorted'}" ${id ? `data-rename="${id}" title="Double-click to rename"` : ''}>${esc(name)}</span>
@@ -397,13 +397,13 @@ async function renderFullcase(quiet = false) {
   const slot = (b) => {
     const h = hashStr(b.title);
     const peek = `<div class="peek"><div class="pc">${coverHtml(b)}</div><b>${esc(b.title)}</b>${esc(authorsText(b.authors))}${b.publication_year ? ` · ${esc(b.publication_year)}` : ''}
-      ${b.readable ? `<div class="peek-pdf">📖 PDF${b.pdf_page && b.pdf_pages ? ` · page ${b.pdf_page} of ${b.pdf_pages}` : ''}</div>` : ''}</div>`;
+      ${b.ebook_ext ? `<div class="peek-pdf">${b.readable ? '📖' : '⬇'} ${esc(b.ebook_ext.toUpperCase())}${b.ebook_pct ? ` · ${Math.round(b.ebook_pct * 100)}% read` : ''}</div>` : ''}</div>`;
     if (covers) return `<div class="slot" data-id="${b.id}" data-title="${esc((b.title + ' ' + (b.authors || []).join(' ')).toLowerCase())}">
       <div class="mcover">${coverHtml(b)}${fmtChips(b)}</div></div>`;
     const w = b.page_count ? Math.max(24, Math.min(46, 16 + b.page_count / 18)) : 24 + (h % 18);
     const ht = 150 + (h % 42);
     return `<div class="slot" data-id="${b.id}" data-title="${esc((b.title + ' ' + (b.authors || []).join(' ')).toLowerCase())}">${peek}
-      <div class="spine" style="--c:${bookColor(b)};width:${w}px;height:${ht}px">${b.readable ? '<em class="pdfdot"></em>' : ''}<span>${esc(b.title)}</span>
+      <div class="spine" style="--c:${bookColor(b)};width:${w}px;height:${ht}px">${fileDot(b)}<span>${esc(b.title)}</span>
         ${w >= 32 ? `<div class="au">${esc(((b.authors || [])[0] || '').split(' ').pop())}</div>` : ''}</div></div>`;
   };
   const bay = (id, name, list, i) => `<section class="fc-bay" style="--i:${i}">
@@ -548,7 +548,7 @@ function bookFormHtml(b = {}) {
     <label class="${b.in_library ? 'c2' : 'c3'}">Personal tags (comma separated)<input type="text" data-f="tags" data-kind="list" value="${esc((b.tags || []).join(', '))}"></label>
     <div class="c6" style="margin:6px 0 4px"><div style="font-weight:500;margin-bottom:6px">I own this book as</div><div class="own-toggles">
       <label class="own"><input type="checkbox" data-f="has_hardcopy" ${b.has_hardcopy ? 'checked' : ''}><span class="tick">✓</span>📕 Hardcopy</label>
-      <label class="own"><input type="checkbox" data-f="has_pdf" ${b.has_pdf || b.pdf_available ? 'checked' : ''}><span class="tick">✓</span>📄 PDF / eBook</label>
+      <label class="own"><input type="checkbox" data-f="has_pdf" ${b.has_pdf || b.ebook_available ? 'checked' : ''}><span class="tick">✓</span>📱 eBook (PDF, EPUB…)</label>
     </div></div>
     <label class="c6">Personal notes<textarea data-f="user_notes" rows="2">${esc(b.user_notes)}</textarea></label>`;
   return `<div class="form-grid book-form"><div class="form-section">About the book</div>${fields}<div class="form-section">My copy</div>${personal}</div>`;
@@ -623,15 +623,22 @@ function fillShelfFilter() {
   el.value = [...el.options].some((o) => o.value === cur) ? cur : '';
 }
 
+/** The eBook file's format as a short label (EPUB, PDF, MOBI…), or "eBook" when you only own a digital copy. */
+const ebookTag = (b) => (b.ebook_ext ? b.ebook_ext.toUpperCase() : 'eBook');
+
 /** Small chips showing which formats you own. */
 function fmtChips(b) {
-  const pdf = b.has_pdf || b.pdf_available || b.readable;
-  if (!b.has_hardcopy && !pdf) return '';
-  const tip = b.pdf_available || b.readable ? 'PDF uploaded: you can read it here' : 'You own it as a PDF';
-  return `<div class="fmt-chips">${b.has_hardcopy ? '<span class="fmt" title="You own the hardcopy">Hardcopy</span>' : ''}${pdf
-    ? `<span class="fmt pdf" title="${tip}">PDF</span>` : ''}</div>`;
+  const digital = b.has_pdf || b.ebook_available || b.ebook_ext;
+  if (!b.has_hardcopy && !digital) return '';
+  const readable = b.ebook_readable || b.readable;
+  const tip = b.ebook_ext ? (readable ? `${ebookTag(b)} file attached: you can read it here` : `${ebookTag(b)} file attached: download to read it`)
+    : 'You own a digital copy';
+  return `<div class="fmt-chips">${b.has_hardcopy ? '<span class="fmt" title="You own the hardcopy">Hardcopy</span>' : ''}${digital
+    ? `<span class="fmt pdf" title="${tip}">${esc(ebookTag(b))}</span>` : ''}</div>`;
 }
-const formatNote = (b) => (b.readable ? ' · PDF' : '');
+const formatNote = (b) => (b.ebook_ext ? ` · ${b.ebook_ext.toUpperCase()}` : '');
+/** A little dot on a spine: green = readable here, amber = file attached (download to read). */
+const fileDot = (b) => (b.ebook_ext ? `<em class="pdfdot ${b.readable ? '' : 'other'}"></em>` : '');
 
 async function loadStats() {
   const s = await run(() => api('/api/stats'));
@@ -640,7 +647,7 @@ async function loadStats() {
     ? `${plural(s.books, 'book')} by ${plural(s.authors, 'author')}${s.pages ? `, ${s.pages.toLocaleString()} pages of reading` : ''}.`
     : "Every book you've shelved, in one place.";
   const items = [['Books', s.books], ['Read', s.read], ['Reading now', s.reading], ['Favourites', s.favorites],
-    ['Hardcopies', s.hardcopies], ['PDFs', s.pdfs]];
+    ['Hardcopies', s.hardcopies], ['eBooks', s.ebooks]];
   $('#lib-stats').innerHTML = s.books ? items.map(([l, v], i) => `<div class="stat" style="--i:${i}"><b>${esc(v)}</b><span>${l}</span></div>`).join('') : '';
 }
 
@@ -690,8 +697,8 @@ async function loadBooks(quiet = false) {
       <td><b>${esc(b.title)}</b>${b.series ? `<div class="muted small">${esc(b.series)} ${esc(b.series_volume || '')}</div>` : ''}</td>
       <td>${esc(authorsText(b.authors))}</td><td>${esc(b.publication_year || '')}</td>
       <td>${esc(shelfName(b.shelf_id ?? null))}</td>
-      <td><span class="list-fmt">${b.has_hardcopy ? '<span class="fmt">Hardcopy</span>' : ''}${b.has_pdf || b.pdf_available ? '<span class="fmt pdf">PDF</span>' : ''}</span>
-        ${b.pdf_available ? '<button class="ghost small" data-read>📖 Read</button>' : ''}</td>
+      <td><span class="list-fmt">${b.has_hardcopy ? '<span class="fmt">Hardcopy</span>' : ''}${b.has_pdf || b.ebook_available ? `<span class="fmt pdf">${esc(ebookTag(b))}</span>` : ''}</span>
+        ${b.ebook_readable ? '<button class="ghost small" data-read>📖 Read</button>' : ''}</td>
       <td>${esc(READING[b.reading_status] || '')}${b.favorite ? ' ★' : ''}</td>
       <td>${badge(b.status)}</td></tr>`).join('')}</tbody></table>`;
   } else {
@@ -700,11 +707,11 @@ async function loadBooks(quiet = false) {
         <input type="checkbox" class="sel" ${l.selected.has(b.id) ? 'checked' : ''} title="Select">
         <div class="cover">${coverHtml(b)}${b.favorite ? '<div class="ribbon fav"></div>' : ''}
           ${b.status === 'uncertain' ? `<div class="flag">${badge('uncertain')}</div>` : ''}
-          ${b.pdf_available ? '<button class="read-chip" data-read title="Read the PDF"><svg class="i"><use href="#i-book-open"/></svg>Read</button>' : ''}</div>
+          ${b.ebook_readable ? `<button class="read-chip" data-read title="Read the ${esc(ebookTag(b))}"><svg class="i"><use href="#i-book-open"/></svg>Read</button>` : ''}</div>
         <div class="t">${esc(b.title)}</div>
         <div class="a">${esc(authorsText(b.authors))}${b.publication_year ? ` · ${esc(b.publication_year)}` : ''}</div>
         ${fmtChips(b).replace('fmt-chips', 'fmt-row')}
-        ${b.pdf_available && b.pdf_page && b.pdf_pages ? `<div class="progress-mini" title="Page ${b.pdf_page} of ${b.pdf_pages}"><div style="width:${Math.round(b.pdf_page / b.pdf_pages * 100)}%"></div></div>` : ''}
+        ${b.ebook_readable && b.ebook_pct ? `<div class="progress-mini" title="${Math.round(b.ebook_pct * 100)}% read"><div style="width:${Math.round(b.ebook_pct * 100)}%"></div></div>` : ''}
       </div>`).join('')}</div>`;
   }
   el.classList.toggle('no-anim', quiet);
@@ -815,7 +822,7 @@ async function openBook(id) {
         ${imgs.length > 1 ? `<div class="thumbs">${imgs.map((i) => `<img src="${thumb(i.id)}" data-id="${i.id}" class="${i.id === cover ? 'active' : ''}" title="${esc(i.filename)}">`).join('')}</div>` : ''}
         ${imgs.length ? `<div class="row small" style="margin-top:10px">${imgs.length > 1 ? '<button id="set-cover" class="ghost">Use as cover</button>' : ''}
           <button id="open-image" class="ghost">Photo details</button></div>` : ''}
-        <div id="pdf-slot">${pdfPanelHtml(b)}</div>
+        <div id="ebook-slot">${ebookPanelHtml(b)}</div>
         ${b.ai_notes ? `<div class="notes">${esc(b.ai_notes)}</div>` : ''}
         <div id="ol-results"></div>
       </div>
@@ -871,87 +878,110 @@ async function openBook(id) {
     closeModal();
   });
   $('#b-lookup', body).onclick = () => openLibraryLookup(id, body);
-  wirePdfPanel(body, b);
+  wireEbookPanel(body, b);
 }
 
-// ---- PDF panel (in a book's details)
+// ---- eBook panel (in a book's details)
+const EBOOK_EXTS = ['pdf', 'epub', 'mobi', 'azw', 'azw3', 'fb2', 'djvu', 'cbz', 'cbr', 'txt', 'rtf', 'docx', 'odt'];
+const EBOOK_ACCEPT = EBOOK_EXTS.map((e) => `.${e}`).join(',') + ',application/pdf,application/epub+zip';
 const fmtSize = (n) => (n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 
-function pdfPanelHtml(b) {
-  if (b.pdf_available) {
-    const pctRead = b.pdf_page && b.pdf_pages ? Math.round(b.pdf_page / b.pdf_pages * 100) : 0;
+function readingProgress(b) {
+  if (b.ebook_ext === 'pdf' && b.ebook_page && b.ebook_pages) return { pct: b.ebook_page / b.ebook_pages, text: `You're on page ${b.ebook_page} of ${b.ebook_pages}` };
+  if (b.ebook_pct) return { pct: b.ebook_pct, text: `You're ${Math.round(b.ebook_pct * 100)}% through` };
+  return null;
+}
+
+function ebookPanelHtml(b) {
+  if (b.ebook_available) {
+    const prog = readingProgress(b);
+    const pctRead = prog ? Math.round(prog.pct * 100) : 0;
+    const dl = `/api/books/${b.id}/ebook?download=1`;
     return `<div class="pdf-panel">
-      <h4>📄 PDF</h4>
-      <div class="fname">${esc(b.pdf_name)}${b.pdf_size ? ` · ${fmtSize(b.pdf_size)}` : ''}${b.pdf_pages ? ` · ${b.pdf_pages} pages` : ''}</div>
+      <h4>📚 eBook <span class="fmt pdf">${esc(ebookTag(b))}</span></h4>
+      <div class="fname">${esc(b.ebook_name)}${b.ebook_size ? ` · ${fmtSize(b.ebook_size)}` : ''}${b.ebook_ext === 'pdf' && b.ebook_pages ? ` · ${b.ebook_pages} pages` : ''}</div>
       ${pctRead ? `<div class="progress-mini" title="${pctRead}% read"><div style="width:${pctRead}%"></div></div>
-        <div class="fname" style="margin-top:4px">You're on page ${b.pdf_page} of ${b.pdf_pages} (${pctRead}%)</div>` : ''}
-      <button class="gold read-big" data-pdf="read"><svg class="i"><use href="#i-book-open"/></svg>${pctRead ? 'Continue reading' : 'Read now'}</button>
+        <div class="fname" style="margin-top:4px">${prog.text}${b.ebook_ext === 'pdf' ? ` (${pctRead}%)` : ''}</div>` : ''}
+      ${b.ebook_readable
+        ? `<button class="gold read-big" data-eb="read"><svg class="i"><use href="#i-book-open"/></svg>${pctRead ? 'Continue reading' : 'Read now'}</button>`
+        : `<div class="notes" style="margin:10px 0 0">Shelfie can't show <b>${esc(b.ebook_label || ebookTag(b))}</b> files in the browser.
+             Download it to read in Kindle, Calibre, Apple Books or another e-reader app.</div>
+           <a class="button gold read-big" href="${dl}"><svg class="i"><use href="#i-down"/></svg>Download to read</a>`}
+      <div class="wrong-file">Wrong file attached?</div>
       <div class="pdf-actions">
-        <label class="button ghost" title="Upload a different PDF">Replace<input type="file" accept="application/pdf,.pdf" data-pdf="file" hidden></label>
-        <a class="button ghost" href="/api/books/${b.id}/pdf?download=1">Download</a>
-        <button class="ghost danger" data-pdf="remove">Remove</button>
+        <label class="button ghost" title="Choose the right file. It replaces this one.">⇄ Upload a different file<input type="file" accept="${EBOOK_ACCEPT}" data-eb="file" hidden></label>
+        <button class="ghost danger" data-eb="remove">Remove file</button>
       </div>
+      ${b.ebook_readable ? `<a class="dl-link" href="${dl}">Download a copy</a>` : ''}
       <div class="upload-bar" hidden><div></div></div>
     </div>`;
   }
   return `<div class="pdf-panel">
-    <label class="pdf-drop" data-pdf="drop">
+    <label class="pdf-drop" data-eb="drop">
       <svg class="i"><use href="#i-upload"/></svg>
-      <b>Upload this book's PDF</b>
-      <span class="small">Drag a PDF here, or click to choose one. Then read it right here in Shelfie.</span>
-      <input type="file" accept="application/pdf,.pdf" data-pdf="file">
+      <b>Upload this book's eBook</b>
+      <span class="small">Drag a file here, or click to choose one.<br>PDF, EPUB, MOBI, AZW3, FB2, DJVU, CBZ, TXT and more.
+        PDF, EPUB and TXT open right here in Shelfie.</span>
+      <input type="file" accept="${EBOOK_ACCEPT}" data-eb="file">
     </label>
     <div class="upload-bar" hidden><div></div></div>
   </div>`;
 }
 
 /** Upload with a progress bar (fetch can't report upload progress, so this uses XMLHttpRequest). */
-function uploadPdf(bookId, file, barEl) {
+function uploadEbook(bookId, file, barEl) {
   return new Promise((resolve, reject) => {
-    if (!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf') { reject(new Error('Please choose a PDF file')); return; }
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    if (!EBOOK_EXTS.includes(ext)) {
+      reject(new Error(`“${file.name}” isn't an eBook file Shelfie knows. Use PDF, EPUB, MOBI, AZW3, FB2, DJVU, CBZ, CBR, TXT, RTF, DOCX or ODT.`));
+      return;
+    }
     const xhr = new XMLHttpRequest();
     const form = new FormData();
     form.append('file', file);
-    xhr.open('POST', `/api/books/${bookId}/pdf`);
+    xhr.open('POST', `/api/books/${bookId}/ebook`);
     if (barEl) { barEl.hidden = false; xhr.upload.onprogress = (e) => { if (e.lengthComputable) barEl.firstElementChild.style.width = `${e.loaded / e.total * 100}%`; }; }
     xhr.onload = () => {
       let data = null;
       try { data = JSON.parse(xhr.responseText); } catch { /* not JSON */ }
+      if (barEl) barEl.hidden = true;
       if (xhr.status >= 200 && xhr.status < 300) resolve(data);
       else reject(new Error((data && data.error) || `Upload failed (${xhr.status})`));
     };
-    xhr.onerror = () => reject(new Error('Upload failed. Is Shelfie still running?'));
+    xhr.onerror = () => { if (barEl) barEl.hidden = true; reject(new Error('Upload failed. Is Shelfie still running?')); };
     xhr.send(form);
   });
 }
 
-function wirePdfPanel(body, b) {
-  const slot = $('#pdf-slot', body);
-  const rewire = (book) => { slot.innerHTML = pdfPanelHtml(book); wirePdfPanel(body, book); };
-  const ownPdf = $('[data-f="has_pdf"]', body);
+function wireEbookPanel(body, b) {
+  const slot = $('#ebook-slot', body);
+  const rewire = (book) => { slot.innerHTML = ebookPanelHtml(book); wireEbookPanel(body, book); };
+  const ownDigital = $('[data-f="has_pdf"]', body);
   const doUpload = (file) => run(async () => {
-    const nb = await uploadPdf(b.id, file, $('.upload-bar', slot));
-    if (ownPdf) ownPdf.checked = true;  // keep the form in step, so Save doesn't undo it
-    toast(`PDF added to “${nb.title}”`);
+    const replacing = b.ebook_available;
+    const nb = await uploadEbook(b.id, file, $('.upload-bar', slot));
+    if (ownDigital) ownDigital.checked = true;  // keep the form in step, so Save doesn't undo it
+    toast(replacing ? `Replaced: “${nb.title}” now has the ${ebookTag(nb)} file “${nb.ebook_name}”`
+      : `${ebookTag(nb)} added to “${nb.title}”`);
     rewire(nb);
     loadBookcase();
   });
-  const input = $('[data-pdf="file"]', slot);
-  if (input) input.onchange = () => input.files[0] && doUpload(input.files[0]);
-  const drop = $('[data-pdf="drop"]', slot);
+  const input = $('[data-eb="file"]', slot);
+  if (input) input.onchange = () => { if (input.files[0]) doUpload(input.files[0]); input.value = ''; };
+  const drop = $('[data-eb="drop"]', slot);
   if (drop) {
     drop.ondragover = (e) => { e.preventDefault(); drop.classList.add('over'); };
     drop.ondragleave = () => drop.classList.remove('over');
     drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove('over'); const f = e.dataTransfer.files[0]; if (f) doUpload(f); };
   }
-  const readBtn = $('[data-pdf="read"]', slot);
+  const readBtn = $('[data-eb="read"]', slot);
   if (readBtn) readBtn.onclick = () => { closeModal(false); openReader(b.id); };
-  const rm = $('[data-pdf="remove"]', slot);
+  const rm = $('[data-eb="remove"]', slot);
   if (rm) rm.onclick = () => run(async () => {
-    if (!confirm('Remove the PDF from this book? (The book itself stays in your library.)')) return;
-    const nb = await api(`/api/books/${b.id}/pdf`, { method: 'DELETE' });
-    if (ownPdf) ownPdf.checked = false;
-    toast('PDF removed');
+    if (!confirm(`Remove the file “${b.ebook_name}” from this book?\n\nThe book stays in your library. You can upload the right file afterwards.`)) return;
+    const nb = await api(`/api/books/${b.id}/ebook`, { method: 'DELETE' });
+    if (ownDigital) ownDigital.checked = false;
+    toast('File removed. You can upload the right one now');
     rewire(nb);
     loadBookcase();
   });
@@ -980,7 +1010,7 @@ function newBook(imageIds) {
     <p class="muted">It goes straight onto your shelf.</p>
     ${imageIds.length ? `<div class="row">${imageIds.slice(0, 12).map((i) => `<img src="${thumb(i)}" style="width:60px;height:60px;object-fit:cover;border-radius:8px">`).join('')}</div>` : ''}
     ${bookFormHtml({ reading_status: 'unread', in_library: 1, shelf_id: null, has_hardcopy: true })}
-    <label style="margin-top:12px">📄 PDF of this book (optional)<input type="file" id="nb-pdf" accept="application/pdf,.pdf"></label>
+    <label style="margin-top:12px">📱 eBook file of this book (optional: PDF, EPUB, MOBI…)<input type="file" id="nb-pdf" accept="${EBOOK_ACCEPT}"></label>
     <div class="upload-bar" id="nb-bar" hidden><div></div></div>
     <div class="modal-actions"><div></div><div><button data-close>Cancel</button><button class="primary" id="nb-save">Add to library</button></div></div>`);
   wireForm(body);
@@ -991,7 +1021,7 @@ function newBook(imageIds) {
     const pdf = $('#nb-pdf', body).files[0];
     const b = await api('/api/books', { body: { ...data, has_pdf: data.has_pdf || !!pdf, image_ids: imageIds } });
     if (pdf) {
-      try { await uploadPdf(b.id, pdf, $('#nb-bar', body)); } catch (e) { toast(`Book added, but the PDF upload failed: ${e.message}`, true); }
+      try { await uploadEbook(b.id, pdf, $('#nb-bar', body)); } catch (e) { toast(`Book added, but the file upload failed: ${e.message}`, true); }
     }
     toast(`“${b.title}” is on your shelf`);
     state.img.selected.clear();
@@ -1599,74 +1629,214 @@ $('#key-clear').onclick = () => run(async () => {
   renderSettings(); poll();
 });
 
-// ------------------------------------------------------------------ PDF READER
+// ------------------------------------------------------------------ READER (PDF, EPUB, TXT)
 const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174';
+const EPUBJS = 'https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js';
+const JSZIP = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
 const ZOOMS = [0.5, 0.67, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3];
+const FONTS = [80, 90, 100, 110, 120, 135, 150, 175, 200];
+const PAPERS = { paper: '#1f1a15', sepia: '#3b2f22', night: '#d9d0c3' };  // text colour on each page colour
 const reader = {
-  open: false, book: null, doc: null, page: 1, pages: 0, zoom: 1, fit: 'page', token: 0, tasks: [],
-  layout: store('rdLayout', 'single'), paper: store('rdPaper', 'paper'), saveT: null, idleT: null, wheelT: 0,
+  open: false, kind: null, book: null, doc: null, page: 1, pages: 0, zoom: 1, fit: 'page', token: 0, tasks: [],
+  layout: store('rdLayout', 'single'), paper: store('rdPaper', 'paper'), font: Number(store('rdFont', '100')) || 100,
+  saveT: null, idleT: null, wheelT: 0, epub: null, rendition: null, locReady: false, pct: 0, pos: null, flow: null, toc: [],
 };
-let pdfjsReady = null;
+const scriptCache = {};
 
-function loadPdfJs() {
-  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
-  if (!pdfjsReady) {
-    pdfjsReady = new Promise((resolve, reject) => {
+function loadScript(src) {
+  if (!scriptCache[src]) {
+    scriptCache[src] = new Promise((resolve, reject) => {
       const tag = document.createElement('script');
-      tag.src = `${PDFJS}/pdf.min.js`;
-      tag.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = `${PDFJS}/pdf.worker.min.js`; resolve(window.pdfjsLib); };
-      tag.onerror = () => { pdfjsReady = null; reject(new Error('The reader needs the internet the first time')); };
+      tag.src = src;
+      tag.onload = resolve;
+      tag.onerror = () => { delete scriptCache[src]; tag.remove(); reject(new Error('The reader needs the internet the first time')); };
       document.head.append(tag);
     });
   }
-  return pdfjsReady;
+  return scriptCache[src];
 }
+async function loadPdfJs() {
+  await loadScript(`${PDFJS}/pdf.min.js`);
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = `${PDFJS}/pdf.worker.min.js`;
+  return window.pdfjsLib;
+}
+async function loadEpubJs() { await loadScript(JSZIP); await loadScript(EPUBJS); return window.ePub; }
+const ebookUrl = (b, download = false) => `/api/books/${b.id}/ebook${download ? '?download=1' : ''}`;
 
 async function openReader(bookId) {
   const b = await run(() => api(`/api/books/${bookId}`));
   if (!b) return;
-  if (!b.pdf_available) { toast('This book has no PDF yet. Open the book to upload one.', true); return; }
+  if (!b.ebook_available) { toast('This book has no eBook file yet. Open the book to upload one.', true); return; }
+  if (!b.ebook_readable) {
+    toast(`Shelfie can't show ${b.ebook_label} files in the browser, so it's downloading for your e-reader app.`);
+    location.href = ebookUrl(b, true);
+    return;
+  }
   const el = $('#reader');
-  Object.assign(reader, { open: true, book: b, doc: null, page: 1, pages: 0, zoom: 1, fit: 'page' });
+  Object.assign(reader, { open: true, kind: b.ebook_ext, book: b, doc: null, page: 1, pages: 0, zoom: 1, fit: 'page',
+    epub: null, rendition: null, locReady: false, pct: b.ebook_pct || 0, pos: b.ebook_pos, flow: null, toc: [] });
   el.hidden = false;
   el.classList.remove('closing', 'idle');
   el.dataset.paper = reader.paper;
+  el.dataset.kind = reader.kind;
+  el.style.setProperty('--rd-font', reader.font / 100);
   document.body.style.overflow = 'hidden';
   $('#rd-book-title').textContent = b.title;
   $('#rd-book-author').textContent = authorsText(b.authors);
-  $('#rd-download').href = `/api/books/${b.id}/pdf?download=1`;
+  $('#rd-download').href = ebookUrl(b, true);
   $('#rd-pages').innerHTML = '';
   $('#rd-toc').hidden = true;
+  $('#rd-toc-btn').classList.remove('active');
   $('#rd-loading').hidden = false;
-  $$('.rd-fallback').forEach((f) => f.remove());
+  $$('.rd-fallback, .rd-flow').forEach((f) => f.remove());
   syncReaderTools();
-  let lib;
   try {
-    lib = await loadPdfJs();
-    reader.doc = await lib.getDocument({ url: `/api/books/${b.id}/pdf`, rangeChunkSize: 262144 }).promise;
+    if (reader.kind === 'pdf') await openPdf(b);
+    else if (reader.kind === 'epub') await openEpub(b);
+    else await openText(b);
   } catch (err) {
-    // Offline or unusual PDF: fall back to the browser's own viewer so the book still opens.
+    console.warn(err);
+    if (!reader.open) return;
     $('#rd-loading').hidden = true;
-    const frame = document.createElement('iframe');
-    frame.className = 'rd-fallback';
-    frame.src = `/api/books/${b.id}/pdf`;
-    Object.assign(frame.style, { position: 'absolute', inset: '0', width: '100%', height: '100%' });
-    $('#rd-stage').append(frame);
-    toast("Using your browser's built-in PDF viewer", false);
+    if (reader.kind === 'pdf') {
+      // Offline or unusual PDF: fall back to the browser's own viewer so the book still opens.
+      const frame = document.createElement('iframe');
+      frame.className = 'rd-fallback';
+      frame.src = ebookUrl(b);
+      Object.assign(frame.style, { position: 'absolute', inset: '0', width: '100%', height: '100%' });
+      $('#rd-stage').append(frame);
+      toast("Using your browser's built-in PDF viewer");
+    } else {
+      $('#rd-stage').insertAdjacentHTML('beforeend', `<div class="rd-flow rd-error">
+        <h2>This ${esc(ebookTag(b))} couldn't be opened</h2><p>${esc(err.message || 'The file may be damaged, or the reader needs the internet the first time.')}</p>
+        <p>If it's the wrong file, close the reader, open the book and choose <b>Upload a different file</b>.</p>
+        <a class="button gold" href="${ebookUrl(b, true)}">Download it instead</a></div>`);
+    }
     return;
   }
+  if (!reader.open) return;
+  $('#rd-loading').hidden = true;
+  armIdle();
+}
+
+// ---- PDF
+async function openPdf(b) {
+  const lib = await loadPdfJs();
+  reader.doc = await lib.getDocument({ url: ebookUrl(b), rangeChunkSize: 262144 }).promise;
   if (!reader.open) return;
   reader.pages = reader.doc.numPages;
   $('#rd-pages-total').textContent = reader.pages;
   $('#rd-slider').max = reader.pages;
   $('#rd-page').max = reader.pages;
-  const start = b.pdf_page && b.pdf_page <= reader.pages ? b.pdf_page : 1;
+  const start = b.ebook_page && b.ebook_page <= reader.pages ? b.ebook_page : 1;
   if (start > 1) toast(`Welcome back, carrying on from page ${start}`);
   await goToPage(start, 0);
-  $('#rd-loading').hidden = true;
   saveProgress(true);
-  loadToc();
-  armIdle();
+  loadPdfToc();
+}
+
+// ---- EPUB (epub.js): real reflowing pages, chapters, font size and page colours
+/** Create the EPUB page view with the current layout, page colour and font size. */
+function setupRendition() {
+  const inner = $('.rd-epub-inner', reader.flow);
+  inner.innerHTML = '';
+  const r = reader.rendition = reader.epub.renderTo(inner, {
+    width: '100%', height: '100%', flow: 'paginated', spread: reader.layout === 'spread' ? 'always' : 'none', allowScriptedContent: false,
+  });
+  for (const [name, color] of Object.entries(PAPERS)) {
+    r.themes.register(name, {
+      body: { color: `${color} !important`, background: 'transparent !important', 'font-family': 'Georgia, "Iowan Old Style", "Palatino Linotype", serif', 'line-height': '1.65' },
+      'p, li, span, div, h1, h2, h3, h4': { color: `${color} !important` },
+      a: { color: name === 'night' ? '#e3b866 !important' : '#8e3424 !important' },
+      img: { 'max-width': '100%' },
+    });
+  }
+  r.themes.select(reader.paper);
+  r.themes.fontSize(`${reader.font}%`);
+  r.on('relocated', (loc) => {
+    reader.pos = loc.start.cfi;
+    reader.pct = reader.locReady ? reader.epub.locations.percentageFromCfi(loc.start.cfi) : (loc.start.percentage || reader.pct);
+    syncReaderTools();
+    saveProgress();
+  });
+  r.on('keydown', (e) => readerKey(e));
+  r.on('mousemove', () => armIdle());
+  r.on('touchstart', (e) => { touchX = e.changedTouches ? e.changedTouches[0].clientX : null; });
+  r.on('touchend', (e) => endSwipe(e));
+}
+
+async function openEpub(b) {
+  const ePub = await loadEpubJs();
+  const res = await fetch(ebookUrl(b));
+  if (!res.ok) throw new Error('The file could not be loaded');
+  const data = await res.arrayBuffer();
+  if (!reader.open) return;
+  const box = document.createElement('div');
+  box.className = `rd-flow rd-epub ${reader.layout === 'spread' ? 'spread' : ''}`;
+  box.innerHTML = '<div class="rd-epub-inner"></div>';
+  $('#rd-stage').append(box);
+  reader.flow = box;
+  reader.epub = ePub(data);
+  setupRendition();
+  const r = reader.rendition;
+  try { await r.display(b.ebook_pos || undefined); } catch { await r.display(); }
+  if (b.ebook_pct > 0.01) toast(`Welcome back, carrying on from ${Math.round(b.ebook_pct * 100)}%`);
+  // Locations make the progress slider and percentages accurate; computing them takes a moment.
+  reader.epub.ready.then(() => reader.epub.locations.generate(1200)).then(() => {
+    if (!reader.open || reader.kind !== 'epub') return;
+    reader.locReady = true;
+    if (reader.pos) reader.pct = reader.epub.locations.percentageFromCfi(reader.pos);
+    syncReaderTools();
+  }).catch(() => {});
+  reader.epub.loaded.navigation.then((nav) => {
+    const items = [];
+    const walk = (list, level) => list.forEach((n) => { items.push({ label: (n.label || '').trim(), href: n.href, level }); if (n.subitems && level < 2) walk(n.subitems, level + 1); });
+    walk(nav.toc || [], 0);
+    reader.toc = items;
+    renderTocList(items.map((it, i) => ({ title: it.label || `Section ${i + 1}`, level: it.level })), (i) => reader.rendition.display(items[i].href));
+  }).catch(() => renderTocList([], null));
+}
+
+// ---- TXT: a clean scrolling page
+async function openText(b) {
+  const res = await fetch(ebookUrl(b));
+  if (!res.ok) throw new Error('The file could not be loaded');
+  const buf = await res.arrayBuffer();
+  let text;
+  try { text = new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch {
+    try { text = new TextDecoder('utf-16', { fatal: true }).decode(buf); } catch { text = new TextDecoder('windows-1252').decode(buf); }
+  }
+  if (!reader.open) return;
+  const box = document.createElement('div');
+  box.className = 'rd-flow rd-text';
+  const paras = text.replace(/\r\n?/g, '\n').split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+  box.innerHTML = `<article>${paras.map((p) => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`).join('')}</article>`;
+  $('#rd-stage').append(box);
+  reader.flow = box;
+  requestAnimationFrame(() => {
+    box.scrollTop = (reader.pct || 0) * (box.scrollHeight - box.clientHeight);
+    if (reader.pct > 0.01) toast(`Welcome back, carrying on from ${Math.round(reader.pct * 100)}%`);
+    syncReaderTools();
+  });
+  box.addEventListener('scroll', debounce(() => {
+    const max = box.scrollHeight - box.clientHeight;
+    reader.pct = max > 0 ? box.scrollTop / max : 1;
+    reader.pos = reader.pct.toFixed(4);
+    syncReaderTools();
+    saveProgress();
+  }, 120));
+  renderTocList([], null);
+}
+
+/** Re-create the EPUB view at the current position (after changing one/two pages or the font size). */
+function rebuildEpub() {
+  if (!reader.epub || !reader.flow) return;
+  const at = reader.pos;
+  try { reader.rendition.destroy(); } catch { /* gone */ }
+  reader.flow.classList.toggle('spread', reader.layout === 'spread');
+  setupRendition();
+  reader.rendition.display(at || undefined).catch(() => reader.rendition.display());
+  syncReaderTools();
 }
 
 function closeReader() {
@@ -1678,17 +1848,21 @@ function closeReader() {
   if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
   const el = $('#reader');
   el.classList.add('closing');
+  const { doc, rendition, epub } = reader;
   setTimeout(() => {
     el.hidden = true; el.classList.remove('closing');
     $('#rd-pages').innerHTML = '';
-    if (reader.doc) { reader.doc.destroy(); reader.doc = null; }
+    $$('.rd-fallback, .rd-flow').forEach((f) => f.remove());
+    try { if (rendition) rendition.destroy(); if (epub) epub.destroy(); } catch { /* already gone */ }
+    if (doc) doc.destroy();
   }, reduceMotion ? 0 : 230);
+  Object.assign(reader, { doc: null, rendition: null, epub: null, flow: null });
   if (!fullcase.open) document.body.style.overflow = '';
   refreshView();
   loadBookcase();
 }
 
-/** Which pages are on screen for a given page: in two-page mode the cover is alone, then 2-3, 4-5… */
+/** Which PDF pages are on screen for a given page: in two-page mode the cover is alone, then 2-3, 4-5… */
 function visiblePages(p) {
   if (reader.layout !== 'spread' || reader.pages < 2 || p === 1) return [p];
   const left = p % 2 === 0 ? p : p - 1;
@@ -1703,8 +1877,26 @@ async function goToPage(p, dir = 0) {
   saveProgress();
 }
 
-const nextPage = () => { const v = visiblePages(reader.page); if (v[v.length - 1] < reader.pages) goToPage(v[v.length - 1] + 1, 1); };
-const prevPage = () => { if (reader.page > 1) goToPage(visiblePages(reader.page - 1)[0], -1); };
+function flowTurn(dir) {
+  const f = reader.flow;
+  if (!f || reduceMotion) return;
+  f.classList.remove('turn-next', 'turn-prev'); void f.offsetWidth; f.classList.add(dir > 0 ? 'turn-next' : 'turn-prev');
+}
+function nextPage() {
+  if (reader.kind === 'epub') { if (reader.rendition) { reader.rendition.next(); flowTurn(1); } return; }
+  if (reader.kind === 'txt') { if (reader.flow) reader.flow.scrollBy({ top: reader.flow.clientHeight * 0.9, behavior: reduceMotion ? 'auto' : 'smooth' }); return; }
+  const v = visiblePages(reader.page); if (v[v.length - 1] < reader.pages) goToPage(v[v.length - 1] + 1, 1);
+}
+function prevPage() {
+  if (reader.kind === 'epub') { if (reader.rendition) { reader.rendition.prev(); flowTurn(-1); } return; }
+  if (reader.kind === 'txt') { if (reader.flow) reader.flow.scrollBy({ top: -reader.flow.clientHeight * 0.9, behavior: reduceMotion ? 'auto' : 'smooth' }); return; }
+  if (reader.page > 1) goToPage(visiblePages(reader.page - 1)[0], -1);
+}
+function goToPct(p) {
+  p = Math.max(0, Math.min(1, p));
+  if (reader.kind === 'epub' && reader.locReady) reader.rendition.display(reader.epub.locations.cfiFromPercentage(p));
+  else if (reader.kind === 'txt' && reader.flow) reader.flow.scrollTop = p * (reader.flow.scrollHeight - reader.flow.clientHeight);
+}
 
 async function renderPages(dir) {
   const doc = reader.doc;
@@ -1753,62 +1945,96 @@ async function renderPages(dir) {
 }
 
 function syncReaderTools() {
+  const flow = reader.kind === 'epub' || reader.kind === 'txt';
+  $$('#rd-layout button').forEach((b) => b.classList.toggle('active', b.dataset.l === reader.layout));
+  $$('#rd-paper button').forEach((b) => b.classList.toggle('active', b.dataset.p === reader.paper));
+  if (flow) {
+    $('#rd-slider').max = 1000;
+    $('#rd-slider').value = Math.round((reader.pct || 0) * 1000);
+    $('#rd-slider').disabled = reader.kind === 'epub' && !reader.locReady;
+    $('#rd-pct').textContent = `${Math.round((reader.pct || 0) * 100)}%`;
+    $('#rd-zoom').textContent = `${reader.font}%`;
+    $('#rd-where').textContent = reader.kind === 'epub' && !reader.locReady ? 'Preparing page numbers…' : 'Through the book';
+    $('#rd-prev').style.visibility = '';
+    $('#rd-next').style.visibility = '';
+    return;
+  }
   const last = visiblePages(reader.page).slice(-1)[0] || 1;
+  $('#rd-slider').disabled = false;
   $('#rd-page').value = reader.page;
   $('#rd-slider').value = reader.page;
   $('#rd-pct').textContent = reader.pages ? `${Math.round(last / reader.pages * 100)}%` : '0%';
   $('#rd-zoom').textContent = `${Math.round(reader.zoom * 100)}%`;
   $('#rd-fit').classList.toggle('active', reader.fit === 'width');
   $('#rd-fit').title = reader.fit === 'width' ? 'Fit the whole page' : 'Fit the page width';
-  $$('#rd-layout button').forEach((b) => b.classList.toggle('active', b.dataset.l === reader.layout));
-  $$('#rd-paper button').forEach((b) => b.classList.toggle('active', b.dataset.p === reader.paper));
   $('#rd-prev').style.visibility = reader.page > 1 ? '' : 'hidden';
   $('#rd-next').style.visibility = last < reader.pages ? '' : 'hidden';
 }
 
 function saveProgress(now = false) {
-  if (!reader.book || !reader.pages) return;
+  if (!reader.book) return;
+  let payload;
+  if (reader.kind === 'pdf') { if (!reader.pages) return; payload = { page: reader.page, pages: reader.pages }; }
+  else payload = { pos: reader.pos, pct: reader.pct };
   clearTimeout(reader.saveT);
-  const send = () => api(`/api/books/${reader.book.id}/progress`, { method: 'PUT', body: { page: reader.page, pages: reader.pages } }).catch(() => {});
+  const id = reader.book.id;
+  const send = () => api(`/api/books/${id}/progress`, { method: 'PUT', body: payload }).catch(() => {});
   if (now) send(); else reader.saveT = setTimeout(send, 800);
 }
 
-async function loadToc() {
+function renderTocList(items, onPick) {
   const list = $('#rd-toc-list');
-  list.innerHTML = '<div class="none">Loading…</div>';
+  if (!items.length) {
+    list.innerHTML = `<div class="none">This ${reader.kind === 'txt' ? 'text file' : 'book'} has no table of contents.</div>`;
+    return;
+  }
+  list.innerHTML = items.map((it, i) => `<a class="l${it.level}" data-i="${i}">${esc(it.title)}</a>`).join('');
+  $$('a', list).forEach((a) => a.onclick = () => {
+    try { onPick(Number(a.dataset.i)); } catch { toast('That chapter link could not be followed', true); }
+    if (innerWidth < 860) $('#rd-toc').hidden = true;
+  });
+}
+
+async function loadPdfToc() {
+  $('#rd-toc-list').innerHTML = '<div class="none">Loading…</div>';
   let outline = null;
   try { outline = await reader.doc.getOutline(); } catch { /* none */ }
-  if (!outline || !outline.length) { list.innerHTML = '<div class="none">This PDF has no table of contents.</div>'; return; }
   const items = [];
   const walk = (nodes, level) => nodes.forEach((n) => { items.push({ n, level }); if (n.items && level < 2) walk(n.items, level + 1); });
-  walk(outline, 0);
-  list.innerHTML = items.map(({ n, level }, i) => `<a class="l${level}" data-i="${i}">${esc(n.title)}</a>`).join('');
-  $$('a', list).forEach((a) => a.onclick = async () => {
-    try {
-      let dest = items[Number(a.dataset.i)].n.dest;
-      if (typeof dest === 'string') dest = await reader.doc.getDestination(dest);
-      if (!dest) return;
-      const idx = typeof dest[0] === 'object' ? await reader.doc.getPageIndex(dest[0]) : dest[0];
-      goToPage(idx + 1, 1);
-      if (innerWidth < 860) $('#rd-toc').hidden = true;
-    } catch { toast('That chapter link could not be followed', true); }
+  walk(outline || [], 0);
+  renderTocList(items.map(({ n, level }) => ({ title: n.title, level })), async (i) => {
+    let dest = items[i].n.dest;
+    if (typeof dest === 'string') dest = await reader.doc.getDestination(dest);
+    if (!dest) return;
+    const idx = typeof dest[0] === 'object' ? await reader.doc.getPageIndex(dest[0]) : dest[0];
+    goToPage(idx + 1, 1);
   });
 }
 
 function setZoom(z) { reader.zoom = z; renderPages(0); }
 function zoomStep(d) {
+  if (reader.kind !== 'pdf') {  // EPUB / text: change the font size
+    const i = FONTS.findIndex((f) => f >= reader.font);
+    reader.font = FONTS[Math.max(0, Math.min(FONTS.length - 1, (i < 0 ? FONTS.length - 1 : i) + d))];
+    try { localStorage.setItem('rdFont', reader.font); } catch { /* ignore */ }
+    $('#reader').style.setProperty('--rd-font', reader.font / 100);
+    if (reader.rendition) rebuildEpub();
+    syncReaderTools();
+    return;
+  }
   const i = ZOOMS.findIndex((z) => z >= reader.zoom - 0.001);
   setZoom(ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, (i < 0 ? ZOOMS.length - 1 : i) + d))]);
 }
 
 function readerKey(e) {
-  if (e.target.matches('input') && e.key !== 'Escape') return;
+  if (e.target && e.target.matches && e.target.matches('input') && e.key !== 'Escape') return;
   const k = e.key;
   if (k === 'Escape') { if (!document.fullscreenElement) closeReader(); return; }
+  if (reader.kind === 'txt' && ['ArrowUp', 'ArrowDown'].includes(k)) return;  // let text scroll normally
   if (['ArrowRight', 'PageDown', ' '].includes(k)) { e.preventDefault(); nextPage(); }
   else if (['ArrowLeft', 'PageUp'].includes(k)) { e.preventDefault(); prevPage(); }
-  else if (k === 'Home') goToPage(1, -1);
-  else if (k === 'End') goToPage(reader.pages, 1);
+  else if (k === 'Home') { if (reader.kind === 'pdf') goToPage(1, -1); else goToPct(0); }
+  else if (k === 'End') { if (reader.kind === 'pdf') goToPage(reader.pages, 1); else goToPct(1); }
   else if (k === '+' || k === '=') zoomStep(1);
   else if (k === '-') zoomStep(-1);
   armIdle();
@@ -1830,26 +2056,38 @@ $('#rd-next').onclick = nextPage;
 $('#rd-zoom-in').onclick = () => zoomStep(1);
 $('#rd-zoom-out').onclick = () => zoomStep(-1);
 $('#rd-fit').onclick = () => { reader.fit = reader.fit === 'width' ? 'page' : 'width'; reader.zoom = 1; renderPages(0); };
-$('#rd-toc-btn').onclick = () => { $('#rd-toc').hidden = !$('#rd-toc').hidden; $('#rd-toc-btn').classList.toggle('active', !$('#rd-toc').hidden); setTimeout(() => renderPages(0), 20); };
+$('#rd-toc-btn').onclick = () => {
+  $('#rd-toc').hidden = !$('#rd-toc').hidden;
+  $('#rd-toc-btn').classList.toggle('active', !$('#rd-toc').hidden);
+  setTimeout(() => { if (reader.kind === 'pdf') renderPages(0); else if (reader.rendition) reader.rendition.resize(); }, 30);
+};
 $('#rd-full').onclick = () => (document.fullscreenElement ? document.exitFullscreen() : $('#reader').requestFullscreen()).catch(() => {});
 $('#rd-page').addEventListener('change', (e) => goToPage(Number(e.target.value), 0));
-$('#rd-slider').addEventListener('input', (e) => { $('#rd-page').value = e.target.value; });
-$('#rd-slider').addEventListener('change', (e) => goToPage(Number(e.target.value), 0));
+$('#rd-slider').addEventListener('input', (e) => {
+  if (reader.kind === 'pdf') $('#rd-page').value = e.target.value;
+  else $('#rd-pct').textContent = `${Math.round(e.target.value / 10)}%`;
+});
+$('#rd-slider').addEventListener('change', (e) => {
+  if (reader.kind === 'pdf') goToPage(Number(e.target.value), 0); else goToPct(Number(e.target.value) / 1000);
+});
 $$('#rd-layout button').forEach((b) => b.onclick = () => {
   reader.layout = b.dataset.l;
   try { localStorage.setItem('rdLayout', reader.layout); } catch { /* ignore */ }
-  goToPage(reader.page, 0);
+  if (reader.kind === 'epub' && reader.rendition) rebuildEpub();
+  else goToPage(reader.page, 0);
 });
 $$('#rd-paper button').forEach((b) => b.onclick = () => {
   reader.paper = b.dataset.p;
   $('#reader').dataset.paper = reader.paper;
+  if (reader.rendition) reader.rendition.themes.select(reader.paper);
   try { localStorage.setItem('rdPaper', reader.paper); } catch { /* ignore */ }
   syncReaderTools();
 });
-// Mouse wheel turns pages when the whole page fits on screen; otherwise it scrolls as usual.
+// Mouse wheel: turns PDF pages when the whole page fits, and EPUB pages always; text simply scrolls.
 $('#rd-stage').addEventListener('wheel', (e) => {
+  if (reader.kind === 'txt' || e.ctrlKey) return;
   const st = $('#rd-stage');
-  if (st.scrollHeight > st.clientHeight + 4 || e.ctrlKey) return;
+  if (reader.kind === 'pdf' && st.scrollHeight > st.clientHeight + 4) return;
   e.preventDefault();
   if (Date.now() - reader.wheelT < 350) return;
   reader.wheelT = Date.now();
@@ -1857,14 +2095,19 @@ $('#rd-stage').addEventListener('wheel', (e) => {
 }, { passive: false });
 // Swipe left / right on touch screens.
 let touchX = null;
-$('#rd-stage').addEventListener('touchstart', (e) => { touchX = e.touches[0].clientX; }, { passive: true });
-$('#rd-stage').addEventListener('touchend', (e) => {
-  if (touchX == null) return;
-  const dx = e.changedTouches[0].clientX - touchX;
+function endSwipe(e) {
+  if (touchX == null || reader.kind === 'txt') { touchX = null; return; }
+  const dx = (e.changedTouches ? e.changedTouches[0].clientX : touchX) - touchX;
   touchX = null;
   if (Math.abs(dx) > 50) (dx < 0 ? nextPage : prevPage)();
-});
-addEventListener('resize', debounce(() => { if (reader.open && reader.doc) renderPages(0); }, 250));
+}
+$('#rd-stage').addEventListener('touchstart', (e) => { touchX = e.touches[0].clientX; }, { passive: true });
+$('#rd-stage').addEventListener('touchend', endSwipe);
+addEventListener('resize', debounce(() => {
+  if (!reader.open) return;
+  if (reader.kind === 'pdf' && reader.doc) renderPages(0);
+  if (reader.rendition) reader.rendition.resize();
+}, 250));
 
 // ------------------------------------------------------------------ CLOSE SHELFIE
 $('#quit-app').onclick = async () => {

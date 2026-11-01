@@ -13,14 +13,14 @@ from pathlib import Path
 
 from flask import Flask, Response, abort, jsonify, request, send_file
 
-from library import catalog, db, feeds, gemini
+from library import catalog, db, ebooks, feeds, gemini
 from library.imaging import HEIF, IMAGE_EXTS, thumbnail_path
 from library.processor import Processor
 from library.scanner import Scanner
 
 app = Flask(__name__, static_folder="static", static_url_path="/static")
 app.json.ensure_ascii = False
-app.config["MAX_CONTENT_LENGTH"] = 600 * 1024 * 1024  # largest PDF you can upload (600 MB)
+app.config["MAX_CONTENT_LENGTH"] = 600 * 1024 * 1024  # largest eBook file you can upload (600 MB)
 processor = Processor()
 scanner = Scanner()
 feed_refresher = feeds.Refresher()
@@ -50,7 +50,7 @@ def bad_request(e):
 
 @app.errorhandler(413)
 def too_large(e):
-    return jsonify(error="That file is too big. PDFs up to 600 MB can be uploaded."), 413
+    return jsonify(error="That file is too big. eBook files up to 600 MB can be uploaded."), 413
 
 
 @app.errorhandler(LookupError)
@@ -400,13 +400,20 @@ def _book_filters(a):
         else:
             where.append("b.shelf_id=?")
             params.append(int(a["in_shelf"]))
-    fmt = a.get("format")  # hardcopy | pdf (owned as PDF) | readable (PDF uploaded)
+    fmt = a.get("format")  # hardcopy | ebook (any digital copy) | readable (file opens in Shelfie) | kindle | pdf | epub …
     if fmt == "hardcopy":
         where.append("b.has_hardcopy=1")
-    elif fmt == "pdf":
-        where.append("(b.has_pdf=1 OR b.pdf_name IS NOT NULL)")
+    elif fmt == "ebook":
+        where.append("(b.has_pdf=1 OR b.ebook_name IS NOT NULL)")
     elif fmt == "readable":
-        where.append("b.pdf_name IS NOT NULL")
+        where.append(f"b.ebook_ext IN ({','.join('?' * len(ebooks.READABLE))})")
+        params += sorted(ebooks.READABLE)
+    elif fmt == "kindle":
+        where.append(f"b.ebook_ext IN ({','.join('?' * len(ebooks.KINDLE))})")
+        params += sorted(ebooks.KINDLE)
+    elif fmt in ebooks.FORMATS:
+        where.append("b.ebook_ext=?")
+        params.append(fmt)
     if a.get("q"):
         like = f"%{a['q']}%"
         where.append("(b.title LIKE ? OR b.subtitle LIKE ? OR b.authors LIKE ? OR b.isbn LIKE ? OR b.series LIKE ? "
@@ -500,66 +507,81 @@ def delete_book(book_id):
             if not conn.execute("SELECT 1 FROM book_images WHERE image_id=?", (i,)).fetchone():
                 conn.execute("UPDATE images SET status='not_book', error='Its book was deleted from the library' "
                              "WHERE id=?", (i,))
-    db.remove_pdf_file(book_id)
+    db.remove_ebook_files(book_id)
     return jsonify(ok=True)
 
 
-# ---------------------------------------------------------------- PDFs
+# ---------------------------------------------------------------- eBook files (PDF, EPUB, MOBI, …)
 
-@app.post("/api/books/<int:book_id>/pdf")
-def upload_pdf(book_id):
-    """Attach (or replace) the PDF of a book."""
+@app.post("/api/books/<int:book_id>/ebook")
+def upload_ebook(book_id):
+    """Attach (or replace) a book's eBook file. The real format is detected from the file's contents."""
     if not db.get_book(book_id):
         abort(404)
     f = request.files.get("file")
     if not f or not f.filename:
-        raise ValueError("Choose a PDF file to upload")
-    head = f.stream.read(1024)
-    if b"%PDF-" not in head:
-        raise ValueError("That file isn't a PDF")
-    f.stream.seek(0)
-    db.PDF_DIR.mkdir(parents=True, exist_ok=True)
-    tmp = db.pdf_path(book_id).with_suffix(".uploading")
+        raise ValueError("Choose an eBook file to upload")
+    db.EBOOK_DIR.mkdir(parents=True, exist_ok=True)
+    tmp = db.EBOOK_DIR / f"{book_id}.uploading"
     f.save(tmp)
     try:
-        tmp.replace(db.pdf_path(book_id))
+        ext = ebooks.detect(tmp, Path(f.filename).suffix)
+    except ValueError:
+        tmp.unlink(missing_ok=True)
+        raise
+    old = db.connect().execute("SELECT ebook_ext FROM books WHERE id=?", (book_id,)).fetchone()["ebook_ext"]
+    try:
+        if old and old != ext:
+            db.ebook_path(book_id, old).unlink(missing_ok=True)  # the previous (wrong) file
+        tmp.replace(db.ebook_path(book_id, ext))
     except OSError:
         tmp.unlink(missing_ok=True)
-        raise RuntimeError("The old PDF is still open somewhere (perhaps in the reader). Close it and try again.") from None
-    name = os.path.basename(f.filename)[:200]
+        raise RuntimeError("The old file is still open somewhere (perhaps in the reader). Close it and try again.") from None
     db.connect().execute(
-        "UPDATE books SET pdf_name=?, pdf_size=?, pdf_pages=NULL, pdf_page=NULL, has_pdf=1, updated_at=? WHERE id=?",
-        (name, db.pdf_path(book_id).stat().st_size, db.now(), book_id))
+        "UPDATE books SET ebook_name=?, ebook_ext=?, ebook_size=?, ebook_pages=NULL, ebook_page=NULL, ebook_pos=NULL, "
+        "ebook_pct=NULL, has_pdf=1, updated_at=? WHERE id=?",
+        (ebooks.safe_name(f.filename), ext, db.ebook_path(book_id, ext).stat().st_size, db.now(), book_id))
     return jsonify(db.get_book(book_id))
 
 
-@app.get("/api/books/<int:book_id>/pdf")
-def get_pdf(book_id):
-    row = db.connect().execute("SELECT pdf_name FROM books WHERE id=?", (book_id,)).fetchone()
-    path = db.pdf_path(book_id)
-    if not row or not row["pdf_name"] or not path.exists():
+@app.get("/api/books/<int:book_id>/ebook")
+def get_ebook(book_id):
+    row = db.connect().execute("SELECT ebook_name, ebook_ext FROM books WHERE id=?", (book_id,)).fetchone()
+    if not row or not row["ebook_name"]:
+        abort(404)
+    path = db.ebook_path(book_id, row["ebook_ext"])
+    if not path.exists():
         abort(404)
     # conditional=True enables HTTP range requests, so big PDFs open fast (pages load as you read)
-    return send_file(path, mimetype="application/pdf", conditional=True, download_name=row["pdf_name"],
+    return send_file(path, mimetype=ebooks.mimetype(row["ebook_ext"]), conditional=True, download_name=row["ebook_name"],
                      as_attachment=bool(request.args.get("download")))
 
 
-@app.delete("/api/books/<int:book_id>/pdf")
-def delete_pdf(book_id):
-    db.remove_pdf_file(book_id)
-    db.connect().execute("UPDATE books SET pdf_name=NULL, pdf_size=NULL, pdf_pages=NULL, pdf_page=NULL, has_pdf=0, "
-                         "updated_at=? WHERE id=?", (db.now(), book_id))
+@app.delete("/api/books/<int:book_id>/ebook")
+def delete_ebook(book_id):
+    db.remove_ebook_files(book_id)
+    db.connect().execute("UPDATE books SET ebook_name=NULL, ebook_ext=NULL, ebook_size=NULL, ebook_pages=NULL, "
+                         "ebook_page=NULL, ebook_pos=NULL, ebook_pct=NULL, has_pdf=0, updated_at=? WHERE id=?",
+                         (db.now(), book_id))
     return jsonify(db.get_book(book_id))
 
 
 @app.put("/api/books/<int:book_id>/progress")
 def save_progress(book_id):
-    """Remember where you are in the PDF (and how many pages it has)."""
+    """Remember where you are: a page (PDF), a position (EPUB location / text scroll) and how far through (0–1)."""
     data = body()
     page = catalog.clean_int(data.get("page"), 1, 100000)
     pages = catalog.clean_int(data.get("pages"), 1, 100000)
-    db.connect().execute("UPDATE books SET pdf_page=COALESCE(?, pdf_page), pdf_pages=COALESCE(?, pdf_pages) "
-                         "WHERE id=?", (page, pages, book_id))
+    pos = str(data["pos"])[:500] if data.get("pos") else None
+    try:
+        pct = max(0.0, min(1.0, float(data["pct"]))) if data.get("pct") is not None else None
+    except (TypeError, ValueError):
+        pct = None
+    if pct is None and page and pages:
+        pct = page / pages
+    db.connect().execute("UPDATE books SET ebook_page=COALESCE(?, ebook_page), ebook_pages=COALESCE(?, ebook_pages), "
+                         "ebook_pos=COALESCE(?, ebook_pos), ebook_pct=COALESCE(?, ebook_pct) WHERE id=?",
+                         (page, pages, pos, pct, book_id))
     return jsonify(ok=True)
 
 
@@ -640,7 +662,8 @@ def shelf():
     """Everything in the library, arranged by shelf, for the bookcase sidebar."""
     rows = db.connect().execute(
         f"SELECT b.id, b.title, b.authors, b.page_count, b.favorite, b.reading_status, b.shelf_id, b.publication_year, "
-        f"b.has_hardcopy, b.has_pdf, b.pdf_name IS NOT NULL AS readable, b.pdf_page, b.pdf_pages, "
+        f"b.has_hardcopy, b.has_pdf, b.ebook_ext, b.ebook_pct, "
+        f"(b.ebook_name IS NOT NULL AND b.ebook_ext IN ('pdf','epub','txt')) AS readable, "
         f"{db.COVER_SQL} FROM books b WHERE b.in_library=1 "
         f"ORDER BY b.shelf_pos IS NULL, b.shelf_pos, b.created_at, b.id LIMIT 2000").fetchall()
     shelves, unsorted = _shelves()
@@ -728,7 +751,7 @@ def merge_books():
     with db.tx() as conn:
         catalog.merge_books(conn, target, sources)
     for sid in sources:  # a merged-away book's PDF that wasn't kept
-        db.remove_pdf_file(sid)
+        db.remove_ebook_files(sid)
     return jsonify(db.get_book(target))
 
 
@@ -890,7 +913,7 @@ def delete_feed_source(source_id):
 EXPORT_FIELDS = ["id", "title", "subtitle", "authors", "publisher", "publication_year", "isbn", "edition", "language",
                  "genre", "categories", "description", "topics", "target_audience", "keywords", "page_count",
                  "series", "series_volume", "confidence", "status", "reading_status", "rating", "favorite",
-                 "shelf", "has_hardcopy", "has_pdf", "pdf_name", "location", "tags", "user_notes", "created_at", "updated_at"]
+                 "shelf", "has_hardcopy", "has_pdf", "ebook_name", "ebook_ext", "location", "tags", "user_notes", "created_at", "updated_at"]
 
 
 @app.get("/api/export")
@@ -929,7 +952,7 @@ def stats():
         reading=one(f"SELECT COUNT(*) FROM books WHERE {lib} AND reading_status='reading'"),
         favorites=one(f"SELECT COUNT(*) FROM books WHERE {lib} AND favorite=1"),
         hardcopies=one(f"SELECT COUNT(*) FROM books WHERE {lib} AND has_hardcopy=1"),
-        pdfs=one(f"SELECT COUNT(*) FROM books WHERE {lib} AND (has_pdf=1 OR pdf_name IS NOT NULL)"),
+        ebooks=one(f"SELECT COUNT(*) FROM books WHERE {lib} AND (has_pdf=1 OR ebook_name IS NOT NULL)"),
         pages=one(f"SELECT COALESCE(SUM(page_count), 0) FROM books WHERE {lib}"),
         verified=one(f"SELECT COUNT(*) FROM books WHERE {lib} AND status='verified'"),
         uncertain=one(f"SELECT COUNT(*) FROM books WHERE {lib} AND status='uncertain'"),
