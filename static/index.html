@@ -11,7 +11,7 @@
       document.documentElement.dataset.theme = t;
     } catch (e) { document.documentElement.dataset.theme = 'light'; }
   </script>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+  <link rel="icon" href="/static/shelfie.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -37,6 +37,15 @@
   <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
   <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
   <symbol id="i-screen" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="1.5"/><path d="M8 21h8M12 17v4"/></symbol>
+  <symbol id="i-power" viewBox="0 0 24 24"><path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></symbol>
+  <symbol id="i-book-open" viewBox="0 0 24 24"><path d="M3 5.5C5.5 4.3 8.5 4.3 12 6c3.5-1.7 6.5-1.7 9-.5V19c-2.5-1.2-5.5-1.2-9 .5-3.5-1.7-6.5-1.7-9-.5z"/><path d="M12 6v13.5"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4m0 0-4 4m4-4 4 4M5 20h14"/></symbol>
+  <symbol id="i-prev" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol>
+  <symbol id="i-toc" viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-spread" viewBox="0 0 24 24"><rect x="3" y="5" width="8" height="14" rx="1"/><rect x="13" y="5" width="8" height="14" rx="1"/></symbol>
+  <symbol id="i-page" viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="1.5"/></symbol>
+  <symbol id="i-fitw" viewBox="0 0 24 24"><path d="M3 12h18M6 9l-3 3 3 3M18 9l3 3-3 3"/></symbol>
   <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
 </svg>
 
@@ -69,6 +78,7 @@
       <button class="theme-toggle" id="theme-toggle" aria-label="Switch day / night theme">
         <span class="knob"></span><span class="tlabel" id="theme-label">Day</span>
       </button>
+      <button class="quit-btn" id="quit-app" title="Stop Shelfie (your library is saved)"><svg class="i"><use href="#i-power"/></svg><span>Close Shelfie</span></button>
     </div>
   </aside>
 
@@ -104,16 +114,20 @@
           <option value="read">Read</option><option value="abandoned">Abandoned</option>
           <option value="wishlist">Wishlist</option>
         </select>
+        <select id="lib-inshelf" title="Show one shelf"><option value="">All shelves</option></select>
+        <select id="lib-format" title="Which format you own">
+          <option value="">Any format</option><option value="hardcopy">📕 Hardcopy</option>
+          <option value="pdf">📄 PDF</option><option value="readable">📖 PDF uploaded (readable here)</option>
+        </select>
         <label class="check"><input type="checkbox" id="lib-fav"> ★ Favourites</label>
         <select id="lib-sort">
           <option value="title">Sort: Title</option><option value="author">Sort: Author</option>
           <option value="year">Sort: Year</option><option value="added">Sort: Recently added</option>
-          <option value="rating">Sort: Rating</option>
+          <option value="rating">Sort: Rating</option><option value="shelf">Sort: Shelf order</option>
         </select>
         <div class="seg" id="lib-layout">
-          <button data-l="shelf" title="Bookshelf"><svg class="i"><use href="#i-shelf"/></svg></button>
-          <button data-l="grid" title="Covers"><svg class="i"><use href="#i-grid"/></svg></button>
-          <button data-l="list" title="List"><svg class="i"><use href="#i-list"/></svg></button>
+          <button data-l="grid" title="Covers"><svg class="i"><use href="#i-grid"/></svg> Covers</button>
+          <button data-l="list" title="List"><svg class="i"><use href="#i-list"/></svg> List</button>
         </div>
       </div>
       <div class="selection-bar" id="lib-selbar" hidden>
@@ -314,6 +328,13 @@
           Set these slightly below the RPM and RPD shown for your model. Daily quotas reset at midnight Pacific time.</p>
         <div class="row"><button id="settings-save" class="primary">Save settings</button></div>
       </div>
+      <div class="card narrow" id="desktop-card" hidden>
+        <h2>Quick start button</h2>
+        <p class="muted">Put a <b>Shelfie</b> button on your Desktop and in the Start menu. Next time, just click it
+          and your library opens in a few seconds.</p>
+        <div class="row"><button id="make-shortcut" class="gold"><img src="/static/shelfie.png" alt="" width="18" height="18"> Add Shelfie to my Desktop</button>
+          <span id="shortcut-result" class="small"></span></div>
+      </div>
     </section>
   </main>
 
@@ -352,6 +373,49 @@
     </div>
   </div>
   <div class="fc-room" id="fc-room"></div>
+</div>
+
+<!-- ============ PDF reader ============ -->
+<div id="reader" class="reader" hidden data-paper="paper" role="dialog" aria-label="PDF reader">
+  <div class="rd-top">
+    <button class="rd-btn" id="rd-close" title="Close the reader (Esc)"><svg class="i"><use href="#i-prev"/></svg><span>Library</span></button>
+    <div class="rd-title"><b id="rd-book-title"></b><span id="rd-book-author"></span></div>
+    <div class="rd-tools">
+      <button class="rd-btn icon" id="rd-toc-btn" title="Contents"><svg class="i"><use href="#i-toc"/></svg></button>
+      <span class="rd-sep"></span>
+      <button class="rd-btn icon" id="rd-zoom-out" title="Smaller (−)"><svg class="i"><use href="#i-minus"/></svg></button>
+      <span class="rd-zoom" id="rd-zoom">100%</span>
+      <button class="rd-btn icon" id="rd-zoom-in" title="Bigger (+)"><svg class="i"><use href="#i-plus"/></svg></button>
+      <button class="rd-btn icon" id="rd-fit" title="Fit page / fit width"><svg class="i"><use href="#i-fitw"/></svg></button>
+      <span class="rd-sep"></span>
+      <div class="rd-seg" id="rd-layout">
+        <button data-l="single" title="One page"><svg class="i"><use href="#i-page"/></svg></button>
+        <button data-l="spread" title="Two pages, like an open book"><svg class="i"><use href="#i-spread"/></svg></button>
+      </div>
+      <div class="rd-seg rd-papers" id="rd-paper" title="Page colour">
+        <button data-p="paper" title="Paper"><i></i></button>
+        <button data-p="sepia" title="Sepia"><i></i></button>
+        <button data-p="night" title="Night"><i></i></button>
+      </div>
+      <span class="rd-sep"></span>
+      <a class="rd-btn icon" id="rd-download" title="Download the PDF"><svg class="i"><use href="#i-down"/></svg></a>
+      <button class="rd-btn icon" id="rd-full" title="Full screen"><svg class="i"><use href="#i-expand"/></svg></button>
+    </div>
+  </div>
+  <div class="rd-body">
+    <aside class="rd-toc" id="rd-toc" hidden><h3>Contents</h3><div id="rd-toc-list"></div></aside>
+    <div class="rd-stage" id="rd-stage">
+      <button class="rd-edge left" id="rd-prev" title="Previous page (←)" aria-label="Previous page"><svg class="i"><use href="#i-prev"/></svg></button>
+      <div class="rd-pages" id="rd-pages"></div>
+      <button class="rd-edge right" id="rd-next" title="Next page (→)" aria-label="Next page"><svg class="i"><use href="#i-chev"/></svg></button>
+      <div class="rd-loading" id="rd-loading"><div class="rd-spinner"></div><span>Opening your book…</span></div>
+    </div>
+  </div>
+  <div class="rd-bottom">
+    <span class="rd-pageinfo">Page <input type="number" id="rd-page" min="1" value="1"> of <span id="rd-pages-total">–</span></span>
+    <input type="range" id="rd-slider" min="1" max="1" value="1" aria-label="Jump to page">
+    <span class="rd-pct" id="rd-pct">0%</span>
+  </div>
 </div>
 
 <div id="modal" class="modal" hidden>

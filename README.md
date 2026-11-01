@@ -1,133 +1,294 @@
-# 📚 Shelfie: your personal library
+<div align="center">
 
-**Turn photos of your books into a beautiful, organised digital library.** Shelfie reads book covers, spines and
-shelves with Google's free Gemini AI, fills in each book's details, and lets you arrange them on named bookshelves,
-track your reading, and follow book news from around the world (Western, Indian, Bangladeshi and Asian).
+<img src="docs/images/banner.jpg" alt="Shelfie: turn photos of your books into a beautiful personal library" width="100%">
 
-![Shelfie](docs/images/01-library.jpg)
+# Shelfie
 
-## Before you start: prerequisites
+**Turn photos of your books into a beautiful, organised personal library.**<br>
+Shelfie reads covers, spines and whole shelves with Google's free Gemini AI, fills in every book's details,
+and lets you arrange them on named bookshelves, track your reading, and follow book news from around the world.
+
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-3-000000?logo=flask&logoColor=white)
+![Gemini](https://img.shields.io/badge/Google%20Gemini-free%20tier-8E75B2?logo=googlegemini&logoColor=white)
+![Platforms](https://img.shields.io/badge/Windows%20%7C%20macOS%20%7C%20Linux-supported-2f5d4f)
+![License: MIT](https://img.shields.io/badge/License-MIT-d9b064)
+
+**[Quick start](#-quick-start)** · **[Features](#-features)** · **[Screenshots](#-screenshots)** ·
+**[User guide](USER_GUIDE.md)** · **[How it works](#%EF%B8%8F-how-it-works)** · **[FAQ](#-faq)**
+
+</div>
+
+---
+
+## ✨ Features
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### 📷 Identify books from photos
+Point Shelfie at a folder of photos (covers, spines, title pages or whole shelves) and it identifies every book:
+title, authors, publisher, year, ISBN, language, genre, description, series and more.
+
+</td>
+<td width="50%" valign="top">
+
+### 🔍 Honest, never invented
+Details that aren't visible stay blank instead of being guessed. ISBNs are checksum-validated, every book has a
+confidence score, and doubtful fields are highlighted for you to check.
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+### ✨ New Finds → your shelves
+Review what Gemini found, then add books to your library one at a time or all at once. Watch each cover fly
+onto your bookcase.
+
+</td>
+<td valign="top">
+
+### 🗂️ Named bookshelves
+Create shelves like *"বাংলা সাহিত্য"*, *"To read"* or *"Science"*. Drag and drop books between them, or open the
+**full-screen bookcase** to see your whole library at once.
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+### ⭐ Track your reading
+Reading status, star ratings, favourites, personal tags, notes and location, with covers taken from your
+own photos. Search, filter and export to CSV (Excel) or JSON.
+
+</td>
+<td valign="top">
+
+### 📰 Book Feed
+News and reviews from The Guardian, NYT, Literary Hub, The Hindu, Indian Express, The Daily Star, Bengali
+বই ও সাহিত্য news, Asian Review of Books and more. **My authors** shows stories about writers on your shelves.
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+### 💸 Built for Gemini's free tier
+The same photo is never sent twice. Photos are shrunk and batched, requests are paced, and a backup model takes over
+when Google is busy. Clear messages show when a daily limit is reached and exactly when it resets.
+
+</td>
+<td valign="top">
+
+### 🌗 Lovely to use
+Warm library design with day and night themes, smooth animations, and phone-friendly layouts. One-click launchers
+set everything up for you. No technical knowledge needed.
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+### 📖 PDFs and a beautiful reader
+Tag each book as **Hardcopy**, **PDF**, or both. Upload a book's PDF and read it in a built-in reader with white,
+sepia and night pages, an open-book two-page spread, zoom, chapters, and it remembers your page.
+
+</td>
+<td valign="top">
+
+### 🖱️ One-click start
+Shelfie adds a **Shelfie** button with its own icon to your Desktop and Start menu. Click it and your library opens
+in seconds. **Close Shelfie** in the app stops it when you're done.
+
+</td>
+</tr>
+</table>
+
+## 📸 Screenshots
+
+<table>
+<tr>
+<td width="50%"><img src="docs/images/01-library.jpg" alt="My Library"><br><sub><b>My Library</b>: books on named shelves, with the bookcase on the right</sub></td>
+<td width="50%"><img src="docs/images/06-full-bookcase.jpg" alt="Full-screen bookcase"><br><sub><b>Full-screen bookcase</b>: every shelf at a glance</sub></td>
+</tr>
+<tr>
+<td><img src="docs/images/02-scan-identify.jpg" alt="Scan and identify"><br><sub><b>Scan &amp; Identify</b>: a whole folder, with live progress</sub></td>
+<td><img src="docs/images/03-new-finds.jpg" alt="New Finds"><br><sub><b>New Finds</b>: add to your library one by one or in bulk</sub></td>
+</tr>
+<tr>
+<td><img src="docs/images/05-book-details.jpg" alt="Book details"><br><sub><b>Book details</b>: everything editable, doubtful fields highlighted</sub></td>
+<td><img src="docs/images/07-book-feed.jpg" alt="Book Feed"><br><sub><b>Book Feed</b>: Western, Indian, Bangladeshi and Asian book news</sub></td>
+</tr>
+<tr>
+<td><img src="docs/images/11-pdf-reader.jpg" alt="PDF reader"><br><sub><b>PDF reader</b>: an open book, with sepia and night pages too</sub></td>
+<td><img src="docs/images/12-book-pdf.jpg" alt="Book with PDF"><br><sub><b>Hardcopy or PDF</b>: upload a PDF, read, and track your progress</sub></td>
+</tr>
+<tr>
+<td><img src="docs/images/04-review.jpg" alt="Review"><br><sub><b>Review</b>: fix anything Gemini wasn't sure about</sub></td>
+<td><img src="docs/images/09-night-mode.jpg" alt="Night mode"><br><sub><b>Night mode</b>: a lamp-lit reading room</sub></td>
+</tr>
+</table>
+
+## 🚀 Quick start
+
+1. **Download Shelfie.** Click the green **Code** button above → **Download ZIP**, then unzip it
+   (or `git clone https://github.com/Ifad7/shelfie.git`).
+2. **Start it:**
+   - **Windows:** double-click **`Shelfie-Windows.bat`**. If Python is missing, it offers to install it for you.
+   - **macOS / Linux:** open Terminal, type `bash ` (with a space), drag **`Shelfie-Mac-Linux.sh`** into the window, press Enter.
+
+   The first start takes a minute or two while it sets itself up. Then Shelfie opens in your browser.
+   On Windows it offers to add a **Shelfie button** to your Desktop, so next time it's one click.
+3. **Add your free Gemini key:** get one at **https://aistudio.google.com/apikey**, paste it into
+   Shelfie's **Settings**, and click **Save**.
+
+Then open **Scan & Identify**, choose a folder of book photos, and click **Start identifying**. 📚
+
+> 📖 **New to Shelfie?** The **[User Guide](USER_GUIDE.md)** explains every feature step by step, in plain language.
+
+## 📋 Prerequisites
 
 | What | Needed? | Why |
-|---|---|---|
-| **Python 3.10 or newer** | ✅ Required | The free program Shelfie runs on |
-| **A web browser** (Chrome, Edge, Firefox, Safari) | ✅ Required | Shelfie's screens open in your browser |
-| **Internet connection** | ✅ Required | Identifying books, Book Feed, and the one-time setup |
-| **A Google account** | ✅ Required | To get your free Gemini key |
-| **Git** | ⬜ Optional | Only to download with `git clone` and get updates with `git pull`. Otherwise use **Code → Download ZIP** on GitHub. |
-| About **200 MB** of free disk space | ✅ Required | Setup files, plus small preview images of your photos |
+|---|:---:|---|
+| **Python 3.10+** | ✅ | The free program Shelfie runs on. The Windows launcher can install it for you. |
+| **A web browser** | ✅ | Chrome, Edge, Firefox or Safari. Shelfie's screens open in it. |
+| **Internet connection** | ✅ | Identifying books, the Book Feed, and the one-time setup |
+| **A Google account** | ✅ | To get a free Gemini API key |
+| **~200 MB disk space** | ✅ | Setup files and small preview images |
+| **Git** | optional | Only for `git clone` / `git pull`. Otherwise use **Download ZIP**. |
 
-### Check whether you already have Python
+**Already have Python?** On Windows run `py --version` in Command Prompt; on macOS/Linux run `python3 --version`
+in Terminal. You need **3.10 or newer**.
 
-- **Windows:** press the Windows key, type `cmd`, press Enter, then type `py --version` and press Enter.
-- **Mac / Linux:** open the **Terminal** app, type `python3 --version` and press Enter.
+<details>
+<summary><b>🪟 Install Python on Windows</b></summary>
 
-If you see `Python 3.10` or a higher number (3.11, 3.12, 3.13…), you're ready. If you see an error, or a lower
-number, install it as below.
+Choose any one:
+- **Easiest:** double-click `Shelfie-Windows.bat`. When asked *"Install Python automatically now?"*, press **Y**.
+- **One command:** open Command Prompt and run `winget install Python.Python.3.13`
+- **By hand:** download from https://www.python.org/downloads/, run it, and ⚠️ **tick "Add python.exe to PATH"**
+  on the first screen before clicking **Install Now**.
 
-### Install Python
+</details>
 
-**Windows: choose any one way**
-- **Easiest:** just double-click **`Shelfie-Windows.bat`**. If Python is missing, it offers to install it for you.
-  Press **Y**.
-- **Command:** open `cmd` and run `winget install Python.Python.3.13`
-- **By hand:** download from https://www.python.org/downloads/, run the installer, and ⚠️ **tick "Add python.exe
-  to PATH"** on the first screen before clicking **Install Now**.
+<details>
+<summary><b>🍎 Install Python on macOS</b></summary>
 
-**Mac: choose one way**
-- **By hand:** download the macOS installer from https://www.python.org/downloads/ and open it.
-- **Homebrew** (if you use it): `brew install python`
+- Download the macOS installer from https://www.python.org/downloads/ and open it, **or**
+- with Homebrew: `brew install python`
 
-**Linux**
+</details>
+
+<details>
+<summary><b>🐧 Install Python on Linux</b></summary>
+
 - Ubuntu / Debian / Mint: `sudo apt install python3 python3-venv python3-tk`
 - Fedora: `sudo dnf install python3 python3-tkinter`
 - Arch: `sudo pacman -S python tk`
 
-(`python3-tk` / `tk` is only needed for the **Browse…** folder button. Without it you can paste a folder's path instead.)
+(`python3-tk` is only needed for the **Browse…** folder button. You can also paste a folder path instead.)
 
-### Install Git (optional)
-
-- **Windows:** `winget install Git.Git`, or download from https://git-scm.com/download/win
-- **Mac:** run `xcode-select --install` in Terminal, or `brew install git`
-- **Linux:** `sudo apt install git` (Ubuntu/Debian) or `sudo dnf install git` (Fedora)
-
-Then: `git clone <this repository's URL>`. No Git? On GitHub click **Code → Download ZIP** and unzip it.
-
-## Get started in 3 steps
-
-1. **Have Python ready** (see [prerequisites](#before-you-start-prerequisites)). On Windows you can skip this, because
-   the launcher offers to install Python for you.
-2. **Start Shelfie:**
-   - **Windows:** double-click **`Shelfie-Windows.bat`**
-   - **Mac / Linux:** open Terminal, type `bash ` (with a space), drag **`Shelfie-Mac-Linux.sh`** into the window, press Enter
-
-   The first start takes a minute or two while it sets itself up. Then your browser opens on Shelfie.
-3. **Add your free Gemini key:** get one at https://aistudio.google.com/apikey and paste it into Shelfie's
-   **Settings** page.
-
-Then go to **Scan & Identify**, pick a folder of book photos, and click **Start identifying**.
-
-👉 **New to Shelfie? Read the [User Guide](USER_GUIDE.md).** It covers every feature step by step, in plain language.
-
-## What it can do
-
-- 📷 **Identify books from photos:** covers, spines, title pages, even whole shelves, many photos at once.
-- 🔍 **Never makes things up:** unknown details stay blank, and uncertain ones are highlighted for you to check.
-- ✨ **New Finds:** review what was found, then add books to your library one by one or all at once.
-- 🗂️ **Named bookshelves:** create shelves, drag and drop books between them, and open a **full-screen bookcase**.
-- ⭐ **Track your reading:** status, ratings, favourites, tags, notes, and covers from your own photos.
-- 📰 **Book Feed:** news and reviews from The Guardian, NYT, The Hindu, The Daily Star, বই ও সাহিত্য news and more.
-- 🌗 **Day and night themes**, works on phones too, and exports to CSV (Excel) or JSON.
-- 💸 **Designed for Gemini's free tier:** photos are never sent twice, requests are batched and paced, and clear
-  messages tell you when a daily limit is reached and when it resets.
-
-Your library stays on your own computer, in the `data` folder. It is not part of the git repository, so your
-books and API key are never uploaded.
-
----
-
-## For developers
+</details>
 
 <details>
-<summary>Technical details</summary>
+<summary><b>🔧 Install Git (optional)</b></summary>
 
-### Running manually
+- **Windows:** `winget install Git.Git`, or https://git-scm.com/download/win
+- **macOS:** `xcode-select --install`, or `brew install git`
+- **Linux:** `sudo apt install git` / `sudo dnf install git`
+
+</details>
+
+## ⚙️ How it works
+
+```mermaid
+flowchart LR
+    A["📁 Folder of<br/>book photos"] --> B["Scan & fingerprint<br/>each photo"]
+    B --> C{"Seen this<br/>photo before?"}
+    C -- yes --> D["Reuse saved answer<br/>(no API call)"]
+    C -- no --> E["Shrink & batch<br/>photos"]
+    E --> F["Google Gemini<br/>structured JSON"]
+    F --> G["Clean, check ISBNs,<br/>merge duplicates"]
+    D --> G
+    G --> H{"Confident?"}
+    H -- yes --> I["✨ New Finds"]
+    H -- no --> J["🔍 Review"]
+    J --> I
+    I --> K["📚 Your named shelves"]
+```
+
+- **Private by design:** Shelfie runs on your own computer. Your library lives in the local `data` folder, which
+  is never committed to git. Only the photos being identified are sent to Google, shrunk to a small size.
+- **Free-tier friendly:** photo fingerprinting (SHA-256) means a photo is analysed once, ever. Requests are batched
+  (3 photos per request by default), paced to your per-minute limit, and capped per day.
+- **Resilient:** if Google is busy (503), Shelfie backs off and switches to a backup model. When a daily limit is
+  reached it pauses and tells you the reset time. Photos are never marked failed because of limits.
+- **Future-proof:** the default model is the `gemini-flash-latest` alias, and if Google retires a model, Shelfie
+  switches to the replacement Google recommends.
+
+## ❓ FAQ
+
+<details>
+<summary><b>Does it cost anything?</b></summary>
+
+No. Shelfie is free and open source, and it's designed around Gemini's **free tier**. You'll need a free key from
+Google AI Studio. Google limits free use per minute and per day; Shelfie stays under those limits and tells you when
+you've reached them.
+</details>
+
+<details>
+<summary><b>Is my data private?</b></summary>
+
+Your library, settings and API key stay on your computer in the `data` folder. Photos are sent to Google Gemini only
+to be identified. The Book Feed fetches public news feeds.
+</details>
+
+<details>
+<summary><b>Which languages and books does it recognise?</b></summary>
+
+Anything Gemini can read: English, Bengali (বাংলা), Hindi, and many more, including non-Latin scripts. Shelf names,
+search and the Book Feed all work in Bengali too.
+</details>
+
+<details>
+<summary><b>What photos work best?</b></summary>
+
+Clear, well-lit, straight-on photos of covers work best. Spines, title pages and photos of whole shelves (one photo,
+many books) also work. A second photo of the back cover helps Shelfie read the ISBN.
+</details>
+
+<details>
+<summary><b>How do I back up or move my library?</b></summary>
+
+Copy the `data` folder (it holds your library, settings and uploaded PDFs). To move to another computer, install
+Shelfie there and put your `data` folder in its place.
+</details>
+
+<details>
+<summary><b>🛠️ For developers</b></summary>
+
+**Run manually**
 
 ```bash
 python -m venv .venv
-.venv/Scripts/pip install -r requirements.txt      # Windows (macOS/Linux: .venv/bin/pip)
-.venv/Scripts/python app.py                         # opens http://127.0.0.1:5173
+.venv/Scripts/pip install -r requirements.txt   # macOS/Linux: .venv/bin/pip
+.venv/Scripts/python app.py                      # http://127.0.0.1:5173
 ```
 
-The launchers do exactly this, plus: Python detection, repairing a broken `.venv`, reinstalling packages only when
-`requirements.txt` changes, and recognising an already-running instance (`app.py` exits with code 3).
+The launchers additionally detect or install Python, repair a broken `.venv`, reinstall packages only when
+`requirements.txt` changes, and recognise an already-running instance (`app.py` exits with code 3).
 
-Environment variables: `GEMINI_API_KEY` (instead of saving the key in the app), `PORT` (default 5173; the next free
-port is used if it's taken), `HOST`, `LIBRARY_DATA_DIR` (default `./data`), `NO_BROWSER=1`.
+**Environment variables:** `GEMINI_API_KEY`, `PORT` (default 5173; the next free port is used if taken), `HOST`,
+`LIBRARY_DATA_DIR` (default `./data`), `NO_BROWSER=1`.
 
-Requirements: Python 3.10+, Flask, Pillow, tzdata. Optional: `pillow-heif` for HEIC photos.
+**Stack:** Python 3.10+, Flask, Pillow, SQLite (built in), vanilla JS/CSS with no build step. Gemini is called over its
+REST API with an enforced response schema. The PDF reader uses [PDF.js](https://mozilla.github.io/pdf.js/) (loaded from
+cdnjs, with the browser's own viewer as an offline fallback); PDFs are served with HTTP range requests so large
+files open quickly. Optional `pillow-heif` adds HEIC photo support.
 
-### Free-tier design
-
-| Technique | Effect |
-| --- | --- |
-| SHA-256 cache | A file with identical content is never sent twice (copies, re-scans, restarts). |
-| Batching | 1–8 images per request (default 3). |
-| Downscaling | Images are resized (default 1600 px) and re-encoded as JPEG before upload. |
-| Pacing and daily cap | Requests are spaced to the RPM setting; processing pauses at the daily cap. |
-| 429 handling | Honours `retryDelay`; per-day exhaustion switches to the fallback model, then pauses with a banner showing the reset time (midnight Pacific). |
-| 503 / overload | Backoff, then the fallback model; images stay queued and are never marked failed. Overload errors don't count toward the daily budget. |
-| Retired models | A 404 naming a replacement model switches to it automatically. Default model is the `gemini-flash-latest` alias. |
-
-### Accuracy and de-duplication
-
-- Structured JSON output (enforced response schema), validated and cleaned. ISBN, publisher, year, edition and page
-  count must be read from the image; ISBNs are checksum-validated.
-- Confidence scores plus `uncertain_fields`; anything below the threshold goes to Review.
-- Books match by ISBN-13 (ISBN-10 converted), otherwise by normalised title plus author surname. Different ISBNs stay
-  separate editions. Manual matching and merging are available in the UI.
-
-### Project layout
+**Project layout**
 
 ```
 app.py                   Flask server + REST API
@@ -138,11 +299,17 @@ library/catalog.py       Cleaning AI output, ISBN validation, de-duplication, li
 library/scanner.py       Folder scanning and hashing (incremental re-scans)
 library/imaging.py       Downscaling for upload, thumbnails, optional HEIC support
 library/feeds.py         Book Feed: RSS/Atom fetching and parsing, built-in sources
-static/                  Single-page UI (vanilla JS, no build step)
+tools/make-shortcut.ps1  Creates the Desktop / Start-menu "Shelfie" button (Windows)
+static/                  Single-page UI (index.html, app.js, styles.css)
 Shelfie-Windows.bat      One-click launcher (Windows)
 Shelfie-Mac-Linux.sh     Launcher (macOS/Linux)
 USER_GUIDE.md            End-user manual (screenshots in docs/images)
-data/                    Created at runtime: library.db + thumbnails (git-ignored)
 ```
 
 </details>
+
+## 📄 License
+
+[MIT](LICENSE). Free to use, change and share.
+
+<div align="center"><sub>Made with ❤️ for book lovers. Happy reading! 📚</sub></div>

@@ -171,6 +171,9 @@ def _insert_book(conn, b, status, source="ai", cover_image_id=None, in_library=0
         "source": source,
         "cover_image_id": cover_image_id,
         "in_library": in_library,
+        # A book found in a photo is a physical copy; manual books say for themselves.
+        "has_hardcopy": 1 if source == "ai" else (1 if b.get("has_hardcopy", 1) else 0),
+        "has_pdf": 1 if b.get("has_pdf") else 0,
         "title_norm": norm_title(b["title"]),
         "author_norm": norm_author(b.get("authors")),
         "created_at": ts,
@@ -292,8 +295,9 @@ def clean_user_book(data, partial=True):
         out["page_count"] = clean_int(data["page_count"])
     if "rating" in data:
         out["rating"] = clean_int(data["rating"], 1, 5)
-    if "favorite" in data:
-        out["favorite"] = 1 if data["favorite"] else 0
+    for flag in ("favorite", "has_hardcopy", "has_pdf"):
+        if flag in data:
+            out[flag] = 1 if data[flag] else 0
     if "reading_status" in data:
         rs = data["reading_status"]
         out["reading_status"] = rs if rs in READING_STATUSES else "unread"
@@ -366,6 +370,12 @@ def merge_books(conn, target_id, source_ids):
             merged[f] = json.dumps(clean_list(json.loads(merged[f] or "[]") + json.loads(src[f] or "[]"), 100),
                                    ensure_ascii=False)
         merged["favorite"] = merged["favorite"] or src["favorite"]
+        merged["has_hardcopy"] = max(merged["has_hardcopy"], src["has_hardcopy"])
+        merged["has_pdf"] = max(merged["has_pdf"], src["has_pdf"])
+        if not merged.get("pdf_name") and src["pdf_name"] and db.pdf_path(sid).exists():
+            db.move_pdf_file(sid, target_id)  # keep the source's PDF on the merged book
+            for f in ("pdf_name", "pdf_size", "pdf_pages", "pdf_page"):
+                merged[f] = src[f]
         merged["in_library"] = max(merged["in_library"], src["in_library"])
         conn.execute("INSERT OR IGNORE INTO book_images(book_id, image_id) "
                      "SELECT ?, image_id FROM book_images WHERE book_id=?", (target_id, sid))

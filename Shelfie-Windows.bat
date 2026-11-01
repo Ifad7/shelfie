@@ -39,15 +39,34 @@ if errorlevel 1 (
   echo.
 )
 
-rem ---------- 4. Start ----------
+rem ---------- 4. Offer a Desktop button, once ----------
+if not exist ".venv\shortcut-offered.txt" call :offershortcut
+
+rem ---------- 5. Start ----------
 echo   Starting Shelfie. Your web browser will open in a moment.
-echo   KEEP THIS WINDOW OPEN while you use Shelfie. Close it when you are finished.
+echo   KEEP THIS WINDOW OPEN while you use Shelfie. To finish, click "Close Shelfie" in the app
+echo   or simply close this window.
 ".venv\Scripts\python.exe" app.py
+if errorlevel 4 if not errorlevel 5 goto :eof
 if errorlevel 3 if not errorlevel 4 goto :alreadyopen
 echo.
 echo   Shelfie has stopped. You can close this window.
 pause >nul
 goto :eof
+
+:offershortcut
+echo asked> ".venv\shortcut-offered.txt"
+echo   Tip: Shelfie can put a "Shelfie" button on your Desktop and in the Start menu,
+echo   so next time you can start it with one click.
+choice /c YN /n /m "  Add the Shelfie button? Press Y for yes or N for no: "
+if errorlevel 2 (
+  echo   No problem. You can add it later from Shelfie's Settings page.
+  echo.
+  exit /b 0
+)
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\make-shortcut.ps1"
+echo.
+exit /b 0
 
 :alreadyopen
 echo.

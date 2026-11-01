@@ -20,6 +20,7 @@ from library.scanner import Scanner
 
 app = Flask(__name__, static_folder="static", static_url_path="/static")
 app.json.ensure_ascii = False
+app.config["MAX_CONTENT_LENGTH"] = 600 * 1024 * 1024  # largest PDF you can upload (600 MB)
 processor = Processor()
 scanner = Scanner()
 feed_refresher = feeds.Refresher()
@@ -45,6 +46,11 @@ def int_list(values):
 @app.errorhandler(RuntimeError)
 def bad_request(e):
     return jsonify(error=str(e)), 400
+
+
+@app.errorhandler(413)
+def too_large(e):
+    return jsonify(error="That file is too big. PDFs up to 600 MB can be uploaded."), 413
 
 
 @app.errorhandler(LookupError)
@@ -388,6 +394,19 @@ def _book_filters(a):
         where.append("b.in_library=1")
     elif shelf == "finds":
         where.append("b.in_library=0")
+    if a.get("in_shelf"):  # one named shelf, or "unsorted"
+        if a["in_shelf"] == "unsorted":
+            where.append("b.shelf_id IS NULL")
+        else:
+            where.append("b.shelf_id=?")
+            params.append(int(a["in_shelf"]))
+    fmt = a.get("format")  # hardcopy | pdf (owned as PDF) | readable (PDF uploaded)
+    if fmt == "hardcopy":
+        where.append("b.has_hardcopy=1")
+    elif fmt == "pdf":
+        where.append("(b.has_pdf=1 OR b.pdf_name IS NOT NULL)")
+    elif fmt == "readable":
+        where.append("b.pdf_name IS NOT NULL")
     if a.get("q"):
         like = f"%{a['q']}%"
         where.append("(b.title LIKE ? OR b.subtitle LIKE ? OR b.authors LIKE ? OR b.isbn LIKE ? OR b.series LIKE ? "
@@ -481,6 +500,94 @@ def delete_book(book_id):
             if not conn.execute("SELECT 1 FROM book_images WHERE image_id=?", (i,)).fetchone():
                 conn.execute("UPDATE images SET status='not_book', error='Its book was deleted from the library' "
                              "WHERE id=?", (i,))
+    db.remove_pdf_file(book_id)
+    return jsonify(ok=True)
+
+
+# ---------------------------------------------------------------- PDFs
+
+@app.post("/api/books/<int:book_id>/pdf")
+def upload_pdf(book_id):
+    """Attach (or replace) the PDF of a book."""
+    if not db.get_book(book_id):
+        abort(404)
+    f = request.files.get("file")
+    if not f or not f.filename:
+        raise ValueError("Choose a PDF file to upload")
+    head = f.stream.read(1024)
+    if b"%PDF-" not in head:
+        raise ValueError("That file isn't a PDF")
+    f.stream.seek(0)
+    db.PDF_DIR.mkdir(parents=True, exist_ok=True)
+    tmp = db.pdf_path(book_id).with_suffix(".uploading")
+    f.save(tmp)
+    try:
+        tmp.replace(db.pdf_path(book_id))
+    except OSError:
+        tmp.unlink(missing_ok=True)
+        raise RuntimeError("The old PDF is still open somewhere (perhaps in the reader). Close it and try again.") from None
+    name = os.path.basename(f.filename)[:200]
+    db.connect().execute(
+        "UPDATE books SET pdf_name=?, pdf_size=?, pdf_pages=NULL, pdf_page=NULL, has_pdf=1, updated_at=? WHERE id=?",
+        (name, db.pdf_path(book_id).stat().st_size, db.now(), book_id))
+    return jsonify(db.get_book(book_id))
+
+
+@app.get("/api/books/<int:book_id>/pdf")
+def get_pdf(book_id):
+    row = db.connect().execute("SELECT pdf_name FROM books WHERE id=?", (book_id,)).fetchone()
+    path = db.pdf_path(book_id)
+    if not row or not row["pdf_name"] or not path.exists():
+        abort(404)
+    # conditional=True enables HTTP range requests, so big PDFs open fast (pages load as you read)
+    return send_file(path, mimetype="application/pdf", conditional=True, download_name=row["pdf_name"],
+                     as_attachment=bool(request.args.get("download")))
+
+
+@app.delete("/api/books/<int:book_id>/pdf")
+def delete_pdf(book_id):
+    db.remove_pdf_file(book_id)
+    db.connect().execute("UPDATE books SET pdf_name=NULL, pdf_size=NULL, pdf_pages=NULL, pdf_page=NULL, has_pdf=0, "
+                         "updated_at=? WHERE id=?", (db.now(), book_id))
+    return jsonify(db.get_book(book_id))
+
+
+@app.put("/api/books/<int:book_id>/progress")
+def save_progress(book_id):
+    """Remember where you are in the PDF (and how many pages it has)."""
+    data = body()
+    page = catalog.clean_int(data.get("page"), 1, 100000)
+    pages = catalog.clean_int(data.get("pages"), 1, 100000)
+    db.connect().execute("UPDATE books SET pdf_page=COALESCE(?, pdf_page), pdf_pages=COALESCE(?, pdf_pages) "
+                         "WHERE id=?", (page, pages, book_id))
+    return jsonify(ok=True)
+
+
+# ---------------------------------------------------------------- app controls (desktop button, close)
+
+@app.get("/api/system")
+def system_info():
+    return jsonify(platform=sys.platform, can_shortcut=sys.platform == "win32")
+
+
+@app.post("/api/system/shortcut")
+def make_shortcut():
+    """Put a Shelfie button on the Windows Desktop and in the Start menu."""
+    if sys.platform != "win32":
+        raise ValueError("Desktop buttons can be created automatically on Windows only")
+    script = Path(__file__).resolve().parent / "tools" / "make-shortcut.ps1"
+    out = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script)],
+                         capture_output=True, text=True, timeout=60)
+    if out.returncode != 0:
+        raise RuntimeError(f"Couldn't create the shortcut: {(out.stderr or out.stdout).strip()[:300]}")
+    return jsonify(ok=True)
+
+
+@app.post("/api/system/quit")
+def quit_app():
+    """Close Shelfie from the browser. Exit code 4 tells the launcher window to close quietly."""
+    processor.cancel()
+    threading.Timer(0.6, lambda: os._exit(4)).start()
     return jsonify(ok=True)
 
 
@@ -533,6 +640,7 @@ def shelf():
     """Everything in the library, arranged by shelf, for the bookcase sidebar."""
     rows = db.connect().execute(
         f"SELECT b.id, b.title, b.authors, b.page_count, b.favorite, b.reading_status, b.shelf_id, b.publication_year, "
+        f"b.has_hardcopy, b.has_pdf, b.pdf_name IS NOT NULL AS readable, b.pdf_page, b.pdf_pages, "
         f"{db.COVER_SQL} FROM books b WHERE b.in_library=1 "
         f"ORDER BY b.shelf_pos IS NULL, b.shelf_pos, b.created_at, b.id LIMIT 2000").fetchall()
     shelves, unsorted = _shelves()
@@ -619,6 +727,8 @@ def merge_books():
         raise ValueError("Choose a book to keep and at least one other book")
     with db.tx() as conn:
         catalog.merge_books(conn, target, sources)
+    for sid in sources:  # a merged-away book's PDF that wasn't kept
+        db.remove_pdf_file(sid)
     return jsonify(db.get_book(target))
 
 
@@ -780,7 +890,7 @@ def delete_feed_source(source_id):
 EXPORT_FIELDS = ["id", "title", "subtitle", "authors", "publisher", "publication_year", "isbn", "edition", "language",
                  "genre", "categories", "description", "topics", "target_audience", "keywords", "page_count",
                  "series", "series_volume", "confidence", "status", "reading_status", "rating", "favorite",
-                 "shelf", "location", "tags", "user_notes", "created_at", "updated_at"]
+                 "shelf", "has_hardcopy", "has_pdf", "pdf_name", "location", "tags", "user_notes", "created_at", "updated_at"]
 
 
 @app.get("/api/export")
@@ -818,6 +928,8 @@ def stats():
         read=one(f"SELECT COUNT(*) FROM books WHERE {lib} AND reading_status='read'"),
         reading=one(f"SELECT COUNT(*) FROM books WHERE {lib} AND reading_status='reading'"),
         favorites=one(f"SELECT COUNT(*) FROM books WHERE {lib} AND favorite=1"),
+        hardcopies=one(f"SELECT COUNT(*) FROM books WHERE {lib} AND has_hardcopy=1"),
+        pdfs=one(f"SELECT COUNT(*) FROM books WHERE {lib} AND (has_pdf=1 OR pdf_name IS NOT NULL)"),
         pages=one(f"SELECT COALESCE(SUM(page_count), 0) FROM books WHERE {lib}"),
         verified=one(f"SELECT COUNT(*) FROM books WHERE {lib} AND status='verified'"),
         uncertain=one(f"SELECT COUNT(*) FROM books WHERE {lib} AND status='uncertain'"),
@@ -864,7 +976,7 @@ def main():
     port = _free_port(host, port)
     url = f"http://{host}:{port}/"
     print(f"\n  Shelfie is running at {url}\n  Your library is saved in: {db.DATA_DIR}\n"
-          f"  Keep this window open while you use Shelfie. Close it (or press Ctrl+C) to stop.\n")
+          f"  To stop: click \"Close Shelfie\" in the app, or close this window.\n")
     if not os.environ.get("NO_BROWSER"):
         threading.Timer(1.2, lambda: webbrowser.open(url)).start()
     # Keep the console calm for non-technical users: no per-request lines or server banner.

@@ -11,6 +11,29 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.environ.get("LIBRARY_DATA_DIR", ROOT / "data"))
 DB_PATH = DATA_DIR / "library.db"
 THUMB_DIR = DATA_DIR / "thumbs"
+PDF_DIR = DATA_DIR / "pdfs"
+
+
+def pdf_path(book_id):
+    return PDF_DIR / f"{int(book_id)}.pdf"
+
+
+def remove_pdf_file(book_id):
+    """Delete a book's PDF; on Windows a file that's open (e.g. being read) can't be deleted, so don't fail on that."""
+    try:
+        pdf_path(book_id).unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
+def move_pdf_file(src_id, dst_id):
+    """Give book dst the PDF of book src (copying if Windows has the file locked)."""
+    import shutil
+    try:
+        pdf_path(src_id).replace(pdf_path(dst_id))
+    except OSError:
+        shutil.copyfile(pdf_path(src_id), pdf_path(dst_id))
+        remove_pdf_file(src_id)
 
 BOOK_JSON_FIELDS = ("authors", "categories", "topics", "keywords", "uncertain_fields", "tags")
 
@@ -188,6 +211,7 @@ def tx():
 
 def init():
     THUMB_DIR.mkdir(parents=True, exist_ok=True)
+    PDF_DIR.mkdir(parents=True, exist_ok=True)
     conn = connect()
     conn.executescript(SCHEMA)
     cols = {r["name"] for r in conn.execute("PRAGMA table_info(books)")}
@@ -201,6 +225,14 @@ def init():
         conn.execute("ALTER TABLE books ADD COLUMN shelf_pos REAL")
         conn.execute("UPDATE books SET shelf_pos=(SELECT COUNT(*) FROM books b2 WHERE b2.created_at < books.created_at "
                       "OR (b2.created_at = books.created_at AND b2.id < books.id)) WHERE in_library=1")
+    # Formats you own (hardcopy / PDF), an uploaded PDF, and how far you've read it.
+    for col, ddl in (("has_hardcopy", "INTEGER NOT NULL DEFAULT 0"), ("has_pdf", "INTEGER NOT NULL DEFAULT 0"),
+                     ("pdf_name", "TEXT"), ("pdf_size", "INTEGER"), ("pdf_pages", "INTEGER"), ("pdf_page", "INTEGER")):
+        if col not in cols:
+            conn.execute(f"ALTER TABLE books ADD COLUMN {col} {ddl}")
+            if col == "has_hardcopy":  # books found from photos are physical copies
+                conn.execute("UPDATE books SET has_hardcopy=1 WHERE EXISTS "
+                             "(SELECT 1 FROM book_images bi WHERE bi.book_id=books.id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_books_in_library ON books(in_library)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_books_shelf ON books(shelf_id, shelf_pos)")
     # Anything left "processing" by a crash or shutdown goes back in the queue.
@@ -268,6 +300,9 @@ def book_from_row(row):
         except ValueError:
             b[f] = []
     b["favorite"] = bool(b.get("favorite"))
+    b["has_hardcopy"] = bool(b.get("has_hardcopy"))
+    b["has_pdf"] = bool(b.get("has_pdf"))
+    b["pdf_available"] = bool(b.get("pdf_name"))
     b.pop("title_norm", None)
     b.pop("author_norm", None)
     return b
