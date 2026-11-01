@@ -1,0 +1,4 @@
+# Keep launchers working whoever clones the project (Windows needs CRLF, macOS/Linux need LF).
+*.bat text eol=crlf
+*.sh  text eol=lf
+*.py  text eol=lf

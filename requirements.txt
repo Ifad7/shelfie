@@ -1,0 +1,6 @@
+flask>=3.0,<4
+pillow>=11.0
+# Time-zone data on Windows, so the daily quota counter resets at midnight Pacific like Gemini's
+tzdata
+# Optional: HEIC/HEIF photos from iPhones. Remove the "#" at the start of the next line to enable.
+# pillow-heif>=0.18

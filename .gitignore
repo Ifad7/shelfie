@@ -1,0 +1,13 @@
+# Your personal library, settings and Gemini API key live here. Never commit it.
+data/
+
+# Python environment and caches (rebuilt automatically by the launchers)
+.venv/
+__pycache__/
+*.pyc
+
+# OS / editor clutter
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
